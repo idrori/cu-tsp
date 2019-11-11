@@ -1,0 +1,1 @@
+from proteinpt.dataset_readers.protein_reader import ProteinDatasetReader
