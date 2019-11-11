@@ -1,0 +1,382 @@
+package meshi.util;
+import meshi.util.file.*;
+import meshi.util.filters.*;
+import meshi.geometry.*;
+import meshi.PDB.*;
+import meshi.energy.*;
+import meshi.optimizers.*;
+import meshi.parameters.*;
+import meshi.sequences.*;
+import meshi.molecularElements.*;
+import meshi.molecularElements.atoms.*;
+import meshi.molecularElements.ca.*;
+import meshi.energy.simpleEnergyTerms.bond.*;
+import meshi.energy.simpleEnergyTerms.angle.*;
+import java.util.*;
+/**
+ * Where we store useful static methods that do not make sense anywhere else.
+ * 
+ **/
+
+public class Utils implements MeshiPotential, KeyWords{
+    public static final ExceptionHandler defaultExceptionHandler = new DefaultExceptionHandler();
+    public static final ExceptionHandler doNothing = new DoNothingExceptionHandler();
+ 
+
+    //----------------------------------- Commands -------------------------------------------------
+    /**
+     * A standard method to create the commands list.
+     **/
+    
+    public static CommandList init(String[] args, String name) {
+	CommandList commands = new CommandList(args, 
+					       new CommandsException("Usage: java -Xmx NNN "+name+"  <commands file name>\n\n"+
+								     "NNN is the size of the expected memory requirement."));
+	if (commands.keyExists(SEED)) 
+	    MeshiProgram.initRandom(commands.firstWord(SEED).secondWordInt());
+	return commands;
+    }
+
+    //----------------------------------- Alignments ----------------------------------------------
+    /**
+     * Gets a residue alignment as a parameters and returns a new alignment that includes only residues with original atoms.
+     **/
+    public static ResidueAlignment getOriginalAtomsAlignment(ResidueAlignment alignment, OriginalAtoms originalAtoms, 
+		    					     int row) {
+	ResidueAlignment out = new ResidueAlignment();
+	for (Iterator columns = alignment.iterator(); columns.hasNext();) {
+	    ResidueAlignmentColumn column = (ResidueAlignmentColumn) columns.next();
+	    Residue residue = (Residue) column.cell(row).obj;
+	    if (!residue.dummy()) {
+		Atom atom = residue.ca();
+		if (originalAtoms.accept(atom)) out.add(column);
+	    }
+	}
+	return out;
+    }
+    
+    public static void assignSecondaryStructure(Protein protein, SequenceAlignment targetSecondaryStructure) {
+	Iterator columns = targetSecondaryStructure.iterator();
+	Iterator residuesIter;
+	Residue residue;
+	SequenceAlignmentColumn column;
+
+	// Assign secondary structure.
+	residuesIter = protein.chain().iterator();
+	residuesIter.next();//the dummy residue
+	while ((residue = (Residue) residuesIter.next()) != null) {
+	    try {
+		column = (SequenceAlignmentColumn) columns.next();
+	    } catch (Exception ex) {throw new RuntimeException("Alignment: \n"+targetSecondaryStructure+"\n"+
+							       "Does not fit protein: "+protein+"\n"+ex);}
+	    String resName = column.cell(0).obj.toString();
+	    if (!resName.equals(residue.type().nameOneLetter()))
+		{throw new RuntimeException("\n"+
+					    "Alignment: \n"+targetSecondaryStructure+"\n"+
+					    "Does not fit protein:\n"+protein+"\n"+
+					    "resName = "+resName+"\n"+
+					    "residue.type() = "+residue.type()+"\n"+
+					    "residue.type().nameOneLetter() = "+residue.type().nameOneLetter());}
+	    char ss = ((SequenceAlignmentCell)column.cell(1)).getChar();
+	    if (ss == 'H') residue.setSecondaryStructure(SecondaryStructure.HELIX);
+	    else if (ss == 'E') residue.setSecondaryStructure(SecondaryStructure.SHEET);
+	    else if (ss == 'C') residue.setSecondaryStructure(SecondaryStructure.COIL);
+	    else if (ss == 'A') residue.setSecondaryStructure(SecondaryStructure.ALL);
+	    else throw new RuntimeException("Unrecognized secondary structure "+ss);
+	}
+    }
+
+    public static ResidueAlignment alignProteinsByAlignmentFile(CommandList commands, Key key,
+								Chain chain0, Chain chain1) {
+        Command      alignmentCommand        = commands.firstWord(TEMPLATE_TARGET_ALIGNMENT);
+        SequenceList sequenceList            = new SequenceList(alignmentCommand.secondWord());
+	
+	Sequence     sequence0               = chain0.sequence();
+        Sequence     sequence1               = chain1.sequence();
+ 
+	Sequence     sequence0FromSL  = (Sequence) sequenceList.elementAt(0);
+        Sequence     sequence1FromSL  = (Sequence) sequenceList.elementAt(1);
+       
+	SequenceAlignment sequence0Alignment = SequenceAlignment.identityAlignment(sequence0, sequence0FromSL);
+        SequenceAlignment sequence1Alignment = SequenceAlignment.identityAlignment(sequence1, sequence1FromSL);
+     
+	attributeTransfer(sequence0Alignment);
+	attributeTransfer(sequence1Alignment);
+	
+	ResidueAlignment out = new ResidueAlignment();
+	for (int i = 0; i < sequence0FromSL.size(); i++)
+	    SequenceAlignmentColumn column = new SequenceAlignmentColumn
+	for (Iterator columns = sequence0Alignment.iterator(); columns.hasNext();) {
+	    SequenceAlignmentColumn column
+
+    //----------------------------------- DistanceMatrix -------------------------------------------
+    /**
+     * A standard method to build distance matrices.
+     **/
+    public static DistanceMatrix getDistanceMatrix(AtomList atomList, CommandList commands) {
+	double rmax = commands.firstWord(R_MAX).secondWordDouble();
+	double buffer = commands.firstWord(BUFFER_SIZE).secondWordDouble();
+	double edge = commands.firstWord(GRID_EDGE).secondWordDouble();
+	return new DistanceMatrix(atomList, rmax, buffer, edge);
+    }
+
+    //----------------------------------- energy -------------------------------------------------
+    public static double[] getEnergyValues(TotalEnergy totalEnergy) {
+	double[] out = new double[totalEnergy.energyTerms().size()];
+	boolean[] on = new boolean[totalEnergy.energyTerms().size()];
+	int i = 0;
+	for (Iterator terms = totalEnergy.energyTerms().iterator(); terms.hasNext();) {
+	    AbstractEnergy term = (AbstractEnergy) terms.next();
+	    on[i] = term.isOn();
+	    i++;
+	}
+	i = 0;
+	for (Iterator terms = totalEnergy.energyTerms().iterator(); terms.hasNext();) {
+	    AbstractEnergy term = (AbstractEnergy) terms.next();
+	    totalEnergy.off();
+	    term.on();
+	    out[i] = totalEnergy.evaluate();
+	    i++;
+	}
+	i = 0;
+	totalEnergy.off();
+	for (Iterator terms = totalEnergy.energyTerms().iterator(); terms.hasNext();) {
+	    AbstractEnergy term = (AbstractEnergy) terms.next();
+	    if (on[i]) term.on();
+	    i++;
+	}
+	return out;
+    }
+    public static String[] getEnergyTermsNames(TotalEnergy totalEnergy) {
+	String[] out = new String[totalEnergy.energyTerms().size()];
+	int i = 0;
+	for (Iterator terms = totalEnergy.energyTerms().iterator(); terms.hasNext();) {
+	    AbstractEnergy term = (AbstractEnergy) terms.next();
+	    out[i] = term.comment();
+	    i++;
+	}
+	return out;
+    }
+
+    
+    //----------------------------------- io ----------------------------------------------------
+    /**
+     * Opens a file for writing (warped by MeshiWriter object) with a name and location specified
+     * by the commands and a .<seed>.<runNumber>.pdb suffix.
+     **/
+    public static MeshiWriter newPdbWriter(CommandList commands, Key pathKey, Key nameKey, int runNumber) {
+	try {
+	    String suffix = "."+MeshiProgram.seed()+"."+runNumber+".pdb";
+	    return new MeshiWriter(commands, pathKey, nameKey, suffix);
+	}
+	catch(Exception ex) {
+	    throw new RuntimeException("A problem in opening output file with key words "+
+				       pathKey+" and "+nameKey+"\n"+ex);
+	}
+    }
+
+    //----------------------------------- Misc. ----------------------------------------------------
+    /**
+     * Static version of equals. Useful when the compared objects may be null.
+     * This is NOT the right place for highly sofisticate algorithms. 
+     **/
+    public static boolean equals(Object obj1, Object obj2) {
+	if (obj1 == null)
+	    return (obj2 == null);
+	else
+	    return (obj1.equals(obj2));
+    }
+    
+    /** 
+     * Converts a string to an int.
+     **/
+    public static int toInt(String s) {
+	return Integer.valueOf(s.trim()).intValue();
+    }
+    /** 
+     * Converts a string to a double.
+     **/
+    public static double toDouble(String s) {
+	return Double.valueOf(s.trim()).doubleValue();
+    }
+
+    //----------------------------------- Optimization ----------------------------------------------------
+    public static LBFGS getLBFGS(TotalEnergy energy, CommandList commands) {
+ 	int maxSteps = commands.firstWord(MAX_STEPS).secondWordInt();
+	double tolerance = commands.firstWord(TOLERANCE).secondWordDouble();
+	int reportEvery = commands.firstWord(REPORT_EVERY).secondWordInt();
+	return new LBFGS(energy,tolerance,maxSteps,reportEvery);
+    }
+
+    public static LBFGS getLBFGS(TotalEnergy energy, CommandList commands, Key key) {
+	CommandList commands1 = commands.firstWordFilter(key);
+	int maxSteps = commands1.secondWord(MAX_STEPS).thirdWordInt();
+	double tolerance = commands1.secondWord(TOLERANCE).thirdWordDouble();
+	int reportEvery = commands1.secondWord(REPORT_EVERY).thirdWordInt();
+	return new LBFGS(energy,tolerance,maxSteps,reportEvery);
+    }
+   
+
+
+
+    //----------------------------------- Proteins ----------------------------------------------------
+    /** 
+     * Reads a protein structure from the file pointed at by the command list.
+     **/
+    public static Protein getProtein(CommandList commands, 
+				     Key key, ResidueCreator creator, ExceptionHandler exceptionHandler) {
+	try {
+	    Protein out = new Protein(commands.firstWord(key).secondWord(),
+			       new PdbLineATOM(),
+			       creator); 
+	    return out;
+	} catch (Exception ex) {exceptionHandler.handle(ex);}
+	return null;
+    }
+    /** 
+     * Reads a protein structure from the file pointed at by the command list.
+     **/
+    public static Protein getProtein(CommandList commands, 
+				     Key key1, Key key2, ResidueCreator creator, ExceptionHandler exceptionHandler) {
+	try {
+	    commands = commands.firstWordFilter(key1);
+	    Protein out = new Protein(commands.secondWord(key2).thirdWord(),
+			       new PdbLineATOM(),
+			       creator); 
+	    return out;
+	} catch (Exception ex) {exceptionHandler.handle(ex);}
+	return null;
+    }
+	
+    public static void assignRandomCaCoordinates(Chain chain) {
+	// Assign arbitrary (extended) coordinates
+	Iterator residuesIter = chain.iterator();
+	residuesIter.next();//the dummy residue
+	int i = 0;
+	Coordinates prev = new Coordinates(0.0, 0.0, 0.0);
+	Residue  residue;
+	while ((residue = (Residue) residuesIter.next()) != null) {
+	    if (! residue.dummy()) {
+		residue.ca().coordinates().set(prev);
+	    	double dx = MeshiProgram.randomNumberGenerator().nextDouble()*3.8;
+	    	double tmp = Math.sqrt(3.8*3.8-dx*dx);
+	    	double dy = MeshiProgram.randomNumberGenerator().nextDouble()*tmp;
+	    	double dz = Math.sqrt(3.8*3.8-dx*dx-dy*dy);
+	    	residue.ca().addToX(dx);
+	    	residue.ca().addToY(dy);
+	    	residue.ca().addToZ(dz);
+	    	prev = residue.ca().coordinates();
+	    }
+	    i++;
+	}
+    }
+
+    public static void colorByEnergy(AtomList atomList) {
+	double min = 10000; 
+	double max = -10000;
+	for (Iterator atoms = atomList.iterator(); atoms.hasNext();) {
+	    Atom atom = (Atom) atoms.next();
+	    double energy = atom.energy();
+	    if (energy < min) min = energy;
+	    if (energy > max) max = energy;
+	}
+	double range = max - min;
+	for (Iterator atoms = atomList.iterator(); atoms.hasNext();) {
+	    Atom atom = (Atom) atoms.next();
+	    atom.setTemperatureFactor(99.9*atom.energy()/range+min);
+	}
+    }
+
+
+    public static void assignBackboneCoordinates(AtomList modelAtoms, AtomList tempAtoms){
+	Atom[] modelArray = modelAtoms.toArrayOfAtoms();
+	Atom[] tempArray = tempAtoms.toArrayOfAtoms();
+	Comparator comparator = new AtomComparator();
+	Arrays.sort(modelArray,comparator);
+	Arrays.sort(tempArray,comparator);
+	int i=0;
+	Atom oxt = null;
+	for (Atom modelAtom:modelArray) {
+	    if (!modelAtom.name().equals("OXT")) {
+		    while((i < tempArray.length) &&
+			  ((tempArray[i].residue().number() != modelAtom.residue().number()) |
+			   (! tempArray[i].name().equals(modelAtom.name())))) {
+			i++;
+		    }
+		    if (i >= tempArray.length) throw new RuntimeException("Can't find coordinates for "+modelAtom);
+		    modelAtom.coordinates().set(tempArray[i].coordinates());
+		    i++;
+	    }
+	    else oxt = modelAtom;
+	}
+	Atom ca = oxt.residue().ca();
+	double x = ca.x()+1;
+	oxt.coordinates().set(new Coordinates(x, ca.y(), ca.z())); 
+    }
+
+    //----------------------------------- Sequences ----------------------------------------------------
+    
+    public static ResidueSequence getResidueSequence(CommandList commands, Key key) {
+	String fileName=commands.firstWord(key).secondWord();
+	FastaList fastaList = new FastaList(fileName);
+	return new ResidueSequence(fastaList);
+    }
+
+    //------------------------------------------------------------------------------------------------------------------------------------------   
+
+    
+     public static AtomList duplicateInAnewMolecularSystem(AtomList atomList) {
+       MolecularSystem saveMS = MolecularSystem.currentMolecularSystem();
+       new MolecularSystem();
+
+       AtomList out = new AtomList();
+       Iterator atoms = atomList.iterator();
+       Atom atom;
+
+       while ((atom = (Atom) atoms.next()) != null) {
+           out.add(new Atom(new PdbLine(atom.toString())));
+       }
+       MolecularSystem.setCurrentMolecularSystem(saveMS);
+       return out;
+     }
+
+    public static void moveHydrogensCloseToHeavy(AtomList atoms, double radius) {
+	for (Iterator atomsIter = atoms.iterator(); atomsIter.hasNext();) {
+	    Atom atom = (Atom) atomsIter.next();
+	    if (atom.type().isHydrogen()) {
+		Atom heavy = (Atom) atom.bonded().elementAt(0);
+		atom.randomize(radius, heavy);
+	    }
+	}
+    }
+
+    public static BondParametersList getBondParameters(CommandList commands) {
+	Command command = commands.firstWord(PARAMETERS_DIRECTORY); 
+	String parametersDirectory = command.secondWord(); 
+	return new BondParametersList(parametersDirectory+
+				      "/"+BOND_PARAMETERS);
+    }
+    public static AngleParametersList getAngleParameters(CommandList commands) {
+	Command command = commands.firstWord(PARAMETERS_DIRECTORY); 
+	String parametersDirectory = command.secondWord(); 
+	return new AngleParametersList(parametersDirectory+
+				      "/"+ANGLE_PARAMETERS);
+    }
+
+    
+    private static class DefaultExceptionHandler implements ExceptionHandler {
+	public void handle(Exception ex) {
+	    System.out.println("An Exception has occured and handled by the  DefaultExceptionHandler.\n"+ex);
+	    ex.printStackTrace();
+	    throw new RuntimeException(ex);
+	}
+    }
+ 
+   private static class DoNothingExceptionHandler implements ExceptionHandler {
+	public void handle(Exception ex) {
+	    System.out.println("An Exception "+ex+" has occured.\n"+"The doNothing ExceptionHandler did nothing.");
+	}
+    }
+
+
+}
