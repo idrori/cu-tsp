@@ -1,0 +1,281 @@
+package meshi.PDB;
+import meshi.util.*;
+import java.text.DecimalFormat;
+/**
+ * A MESHI implementation of the Protein Data Bank definition of ATOM record. 
+ *from http://www.rcsb.org/pdb/docs/format/pdbguide2.2/guide2.2_frame.html
+ *
+ *   COLUMNS        DATA TYPE       FIELD         DEFINITION
+ *---------------------------------------------------------------------------------
+ *  1 -  6        Record name     "ATOM  "
+ *
+ *  7 - 11        Integer         serial        Atom serial number.
+ *
+ * 13 - 16        Atom            name          Atom name.
+ *
+ * 17             Character       altLoc        Alternate location indicator.
+ *
+ * 18 - 20        Residue name    resName       Residue name.
+ *
+ * 22             Character       chainID       Chain identifier.
+ *
+ * 23 - 26        Integer         resSeq        Residue sequence number.
+ *
+ * 27             AChar           iCode         Code for insertion of residues.
+ *
+ * 31 - 38        Real(8.3)       x             Orthogonal coordinates for X in
+ *                                              Angstroms.
+ * 
+ * 39 - 46        Real(8.3)       y             Orthogonal coordinates for Y in
+ *                                              Angstroms.
+ * 
+ * 47 - 54        Real(8.3)       z             Orthogonal coordinates for Z in
+ *                                              Angstroms.
+ * 
+ * 55 - 60        Real(6.2)       occupancy     Occupancy.
+ * 
+ * 61 - 66        Real(6.2)       tempFactor    Temperature factor.
+ * 
+ * 73 - 76        LString(4)      segID         Segment identifier, left-justified.
+ * 
+ * 77 - 78        LString(2)      element       Element symbol, right-justified.
+ * 
+ * 79 - 80        LString(2)      charge        Charge on the atom.
+ **/
+public class PdbLine  {
+    private String line;
+    public PdbLine(String line) {
+	this.line = line;
+    }
+    public  PdbLine (int number, String name, String residueName,
+                     String chain, int residueNumber,
+                     double x,double y, double z, double occupancy,
+                     double temperatureFactor) {
+	// x = Math.round(x*1000)*0.001;
+	// if (Math.round(x) == x) x += 0.001;
+	// y = Math.round(y*1000)*0.001;
+	// if (Math.round(y) == y) y += 0.001;
+	// z = Math.round(z*1000)*0.001;
+	// if (Math.round(z) == z) z += 0.001;
+	// occupancy = Math.round(occupancy*100)*0.01;
+	// temperatureFactor = Math.round(temperatureFactor*100)*0.01;
+
+        DecimalFormat serial = new DecimalFormat("00000");
+	DecimalFormat resSeq = new DecimalFormat("0000");
+	DecimalFormat coordinates = new DecimalFormat("0000.000");
+	DecimalFormat factor = new DecimalFormat("000.00");
+
+	line = "ATOM  ";
+
+	line += removeLeadingsZeros(serial.format(number));
+	line += "  ";
+
+	line += name;
+	for(int i = 0; i < 4-name.length();i++)
+	    line += " ";
+
+	line = line.concat(residueName);
+	for(int i = 0; i < 4-residueName.length();i++)
+	    line += " ";
+	
+	line += chain;
+
+        line += removeLeadingsZeros(resSeq.format(residueNumber));
+        // iCode
+        line += "    ";
+        
+	line += removeLeadingsZeros(coordinates.format(x));
+	line += removeLeadingsZeros(coordinates.format(y));
+	line += removeLeadingsZeros(coordinates.format(z));
+	// occupancy is between 0.00 and 1.00
+	line += removeLeadingsZeros(factor.format(occupancy)); 
+	// temperature factor's threshold are 1.00 and 99.90
+	if (temperatureFactor<=1.00)
+            temperatureFactor = 1.00;
+	if (temperatureFactor>=99.90)
+            temperatureFactor = 99.90;
+	line += removeLeadingsZeros(factor.format(temperatureFactor));
+	// to be deleted:
+    }
+    
+    public boolean isAnAtom() {
+	return line.startsWith("ATOM");
+    }
+    public boolean isAHeteroAtom() {
+	return line.startsWith("HETATM"); 
+    }
+    public boolean isAnAtomOrHeteroAtom() {
+	return (isAnAtom() || isAHeteroAtom());
+    }
+    public void needsToBeAnAtom() {
+	if (! isAnAtomOrHeteroAtom() )
+	    throw new MeshiException("PdbLine error:\n"+
+                                     "needs to be an atom:\n"+
+                                     this+"\n");
+    }
+    public boolean isAComment() {return (! isAnAtomOrHeteroAtom());}
+    public boolean isSEQRES() {return line.startsWith("SEQRES");}
+    public String toString() {return line;}
+    public double x() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(30,38).trim()).doubleValue();
+    }
+    public double y() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(38,46).trim()).doubleValue();
+    }
+    public double z() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(46,54).trim()).doubleValue();
+    }    
+    public String chain() {
+	needsToBeAnAtom();
+	String temp = line.substring(21,22);
+	//	if (temp.equals(" ")) temp = "0";  commented out 28.8.2002 by chen
+	return temp;
+    }
+    public String residueName() {
+	needsToBeAnAtom();
+	return line.substring(17,20).trim();
+    }
+    public String name() {
+	return line.substring(12,17).trim();
+    }
+    public Integer residueNumber() {
+	needsToBeAnAtom();
+	return Integer.decode(line.substring(22,26).trim());
+    }
+    public int number() {
+	needsToBeAnAtom();
+	return Integer.valueOf(line.substring(6,11).trim()).intValue();
+    }
+
+    /*
+     *Check if this is a MODEL line.
+     */
+    public boolean isAModel() {
+	return line.startsWith("MODEL");
+    }    
+    /*
+     *If this is a MODEL line, the function returns the model number, otherwise it returns -1.
+     */
+    public int getModel() {
+	if (isAModel()) 
+            return Integer.valueOf(line.substring(6).trim()).intValue();
+	else
+            return -1;
+    }
+    public double temperatureFactor() {
+	needsToBeAnAtom();
+	if (line.length() > 65){
+	    String tf = line.substring(60,66).trim();
+	    if (tf.equals("")) return 0.0;
+	    return Double.valueOf(tf).doubleValue();
+	}
+	//             try{return Double.valueOf(tf).doubleValue();}
+	//             catch(NumberFormatException nfe){
+	//                 System.err.println("Temperature factor is wrong");
+	//                 return 0.0;
+    	else
+            return 0.0;
+    }     
+    public double occupancyNumber() {
+	needsToBeAnAtom();
+	if (line.length() > 59) {
+	    String on = line.substring(54,60).trim();
+	    if (on.equals("")) return 0.0;
+	    return Double.valueOf(on).doubleValue();
+	    //             try{return Double.valueOf(on).doubleValue();}
+	    //             catch(NumberFormatException nfe){
+	    //                 System.err.println("Occupancy number is wrong");
+	    //                 return 0.0;
+	    //             }
+	}
+	else
+            return 0.0;
+    }           
+    public String alternateLocation() {
+	needsToBeAnAtom();
+	return line.substring(16,17).trim();
+    }   
+    
+    /** returns the number of digits in a number <br>
+        in case of negative numbers, the method uses abs() 
+    */
+    private int leftDigits(double number) {
+    	if (number<0)
+            return leftDigits(Math.abs(number)); 
+    	if (number>=10000)
+            return(5);
+    	if (number>=1000)
+            return(4);
+    	if (number>=100)
+            return(3);
+    	if (number>=10)
+            return(2);
+    	return(1);
+    } // end private int digits(double)    
+    
+    /** since using DecimalFormat does not add zeros at the <br>
+        end of the number, this function does.
+    */
+    private String addZeros(String line, double parameter,int maxDigits) {
+    	if (parameter<0)
+            return addZeros(line,Math.abs(parameter),maxDigits);
+    	DecimalFormat decimalFormat = new DecimalFormat("0.###");
+    	int numOfZeros;
+    	String parameterString = decimalFormat.format(parameter);
+        if (onlyZeros(parameter,maxDigits))
+            numOfZeros = maxDigits;
+        else {
+            numOfZeros = maxDigits-(parameterString.length()-leftDigits(parameter)-1);
+        } // end else
+        for (int i=0; i<numOfZeros; i++)
+            line = line + "0";
+        return line;
+    } // end private String addZeros;  
+    
+    private boolean onlyZeros(double factor,int digits) {
+    	boolean answer = false;
+    	String zeros = new String();
+    	for (int i=0; i<digits; i++)
+            zeros = zeros + "0";
+    	String temp = new String(new Integer((int)(factor*Math.pow(10,digits))).toString());
+    	if (temp.endsWith(zeros))
+            return true;
+    	return answer;
+    } // end private boolean onlyZeros(double)
+
+    /*
+      removes leading zeros from string represents some number
+      replaces 0 by ' '
+       "00003.4444" => "    3.4444"
+      "-00003.4444" => "   -3.4444"
+     */
+    private String removeLeadingsZeros(String str){
+        String prefix = "";
+        String suffix = "";
+        boolean minus = false;
+        int ind = 0;
+        // find place in str where end sequence of leading zeros
+        // cacthes case of minus too
+        for(ind=0;ind<str.length();ind++){
+            if(ind==0 && str.charAt(ind)=='-')
+                minus=true;
+            else if(str.charAt(ind) != '0')
+                break;
+        }
+        if(ind == str.length())
+            ind--;
+        // suffix is rest
+        suffix = str.substring(ind);
+        // minus was extra char
+        if(minus) ind--;
+        // adding ' ' and '-'
+        for(int i=0;i<ind;i++){
+            if(minus && i==ind-1) prefix += '-';
+            else prefix += ' ';
+        }
+        return prefix+suffix;
+    }
+}

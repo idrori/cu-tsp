@@ -1,0 +1,15 @@
+package meshi.pDB;
+import meshi.util.filters.*;
+import java.io.*;
+import meshi.util.*;
+import meshi.util.file.*;
+public class isAPdbFile extends FileFilter {
+    public boolean acceptFile(File file) {
+	String name = file.getName();
+	if (name.endsWith(".pdb")) return true;
+	if (name.endsWith(".pdb.gz")) return true;
+ 	if (name.endsWith(".ent.gz")) return true;
+ 	if (name.endsWith(".ent")) return true;
+	return false;
+    }
+}

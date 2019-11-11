@@ -1,0 +1,218 @@
+package meshi.PDB;
+import meshi.util.*;
+import java.text.DecimalFormat;
+
+public class PdbLine  {
+    private String line;
+    public PdbLine(String line) {
+	this.line = line;
+    }
+    public  PdbLine (int number, String name, String residueName,
+				  String chain, int residueNumber,
+				  double x,double y, double z, double occupancy,
+				  double temperatureFactor) {
+	x = Math.round(x*1000)*0.001;
+	y = Math.round(y*1000)*0.001;
+	z = Math.round(z*1000)*0.001;
+	occupancy = Math.round(occupancy*100)*0.01;
+	temperatureFactor = Math.round(temperatureFactor*100)*0.01;
+	
+	DecimalFormat coordinates = new DecimalFormat("0.###");
+	DecimalFormat factor = new DecimalFormat("0.##");
+	line = "ATOM";
+	
+	for (int i = 0; i < 7-leftDigits(number);i++)
+	    line = line.concat(" ");
+	line = line + number;
+	line = line.concat("  ");
+
+	line = line.concat(name);
+	for (int i = 0; i < 4-name.length();i++)
+	    line = line.concat(" ");
+
+	line = line.concat(residueName);
+	for (int i = 0; i < 4-residueName.length();i++)
+	    line = line.concat(" ");
+	
+	line = line.concat(chain);
+	
+	for (int i = 0; i < 4-leftDigits(residueNumber);i++)
+	    line = line.concat(" ");
+	line = line + residueNumber;
+
+	for(int i = 0; i < 7-leftDigits(x); i++)
+	    line = line.concat(" ");
+	if (x>0) 
+		line = line + " ";
+	    
+	line = line + coordinates.format(x);
+	if (onlyZeros(x,3))
+		line = line + ".";
+	line = addZeros(line,x,3);
+	
+	if (y>0) 
+		line = line + " ";
+	for (int i=0; i<3-leftDigits(y); i++)
+		line = line + " ";
+	line = line + coordinates.format(y);
+	if (onlyZeros(y,3))
+		line = line + ".";
+	line = addZeros(line,y,3);
+	
+	if (z>0)
+		line = line + " ";
+	for (int i=0; i<3-leftDigits(z); i++)
+		line = line + " ";
+	line = line + coordinates.format(z);
+	if (onlyZeros(z,3))
+		line = line + ".";
+	line = addZeros(line,z,3);
+	    
+	// occupancy is between 0.00 and 1.00
+	line = line + "  ";
+	line = line + factor.format(occupancy); 
+	if ((occupancy == 0) | (occupancy == 1))
+		line = line + ".";
+	line = addZeros(line,occupancy,2);
+	// temperature factor's threshold are 1.00 and 99.90
+	line = line + " ";
+	if (temperatureFactor<=1.00)
+		temperatureFactor = 1.00;
+	if (temperatureFactor>=99.90)
+		temperatureFactor = 99.90;
+	if (leftDigits(temperatureFactor)==1)
+		line = line + " ";
+	line = line + factor.format(temperatureFactor);
+	if (onlyZeros(temperatureFactor,2))
+		line = line + ".";
+	line = addZeros(line,temperatureFactor,2); 
+	// to be deleted:
+	}
+    
+    public boolean isAnAtom() {
+	return line.startsWith("ATOM");
+    }
+    public boolean isAHeteroAtom() {
+	return line.startsWith("HETATM"); 
+    }
+    public boolean isAnAtomOrHeteroAtom() {
+	return (isAnAtom() || isAHeteroAtom());
+    }
+    public void needsToBeAnAtom() {
+	if (! isAnAtomOrHeteroAtom() )
+	    throw new MeshiException("PdbLine error:\n"+
+				  "needs to be an atom:\n"+
+				  this+"\n");
+    }
+    public boolean isAComment() {return (! isAnAtomOrHeteroAtom());}
+    public boolean isSEQRES() {return line.startsWith("SEQRES");}
+    public String toString() {return line;}
+    public double x() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(30,38).trim()).doubleValue();
+    }
+    public double y() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(38,46).trim()).doubleValue();
+    }
+    public double z() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(46,54).trim()).doubleValue();
+    }    
+    public String chain() {
+	needsToBeAnAtom();
+	String temp = line.substring(21,22);
+	//	if (temp.equals(" ")) temp = "0";  commented out 28.8.2002 by chen
+	return temp;
+    }
+    public String residueName() {
+	needsToBeAnAtom();
+	return line.substring(17,20).trim();
+    }
+    public String name() {
+	return line.substring(12,17).trim();
+    }
+    public Integer residueNumber() {
+	needsToBeAnAtom();
+	return Integer.decode(line.substring(22,26).trim());
+    }
+    public int number() {
+	needsToBeAnAtom();
+	return Integer.valueOf(line.substring(6,11).trim()).intValue();
+    }
+
+    /*
+     *Check if this is a MODEL line.
+     */
+    public boolean isAModel() {
+	return line.startsWith("MODEL");
+    }    
+    /*
+     *If this is a MODEL line, the function returns the model number, otherwise it returns -1.
+     */
+    public int getModel() {
+	if (isAModel()) 
+		return Integer.valueOf(line.substring(6).trim()).intValue();
+	else
+		return -1;
+    }
+    public double temperatureFactor() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(60,66).trim()).doubleValue();
+    }     
+    public double occupancyNumber() {
+	needsToBeAnAtom();
+	return Double.valueOf(line.substring(54,60).trim()).doubleValue();
+    }           
+    public String alternateLocation() {
+	needsToBeAnAtom();
+	return line.substring(16,17).trim();
+    }   
+    
+    /** returns the number of digits in a number <br>
+    in case of negative numbers, the method uses abs() 
+    */
+    private int leftDigits(double number) {
+    	if (number<0)
+    		return leftDigits(Math.abs(number)); 
+    	if (number>=10000)
+    		return(5);
+    	if (number>=1000)
+    		return(4);
+    	if (number>=100)
+    		return(3);
+    	if (number>=10)
+    		return(2);
+    	return(1);
+    } // end private int digits(double)    
+    
+    /** since using DecimalFormat does not add zeros at the <br>
+    end of the number, this function does.
+    */
+    private String addZeros(String line, double parameter,int maxDigits) {
+    	if (parameter<0)
+    		return addZeros(line,Math.abs(parameter),maxDigits);
+    	DecimalFormat decimalFormat = new DecimalFormat("0.###");
+    	int numOfZeros;
+    	String parameterString = decimalFormat.format(parameter);
+		if (onlyZeros(parameter,maxDigits))
+			numOfZeros = maxDigits;
+		else {
+			numOfZeros = maxDigits-(parameterString.length()-leftDigits(parameter)-1);
+		} // end else
+		for (int i=0; i<numOfZeros; i++)
+			line = line + "0";
+		return line;
+    } // end private String addZeros;  
+    
+    private boolean onlyZeros(double factor,int digits) {
+    	boolean answer = false;
+    	String zeros = new String();
+    	for (int i=0; i<digits; i++)
+    		zeros = zeros + "0";
+    	String temp = new String(new Integer((int)(factor*Math.pow(10,digits))).toString());
+    	if (temp.endsWith(zeros))
+    		return true;
+    	return answer;
+    } // end private boolean onlyZeros(double)  
+}
