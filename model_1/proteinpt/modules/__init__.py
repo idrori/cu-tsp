@@ -1,0 +1,5 @@
+from proteinpt.modules.cnn_encoder import CNNEncoder
+from proteinpt.modules.msa_encoder import MSAEncoder
+from proteinpt.modules.gru_with_res_n_ln import GRUWithResNLN
+from proteinpt.modules.feedforward_with_res_n_ln import FeedForwardWithResNLN
+from proteinpt.modules.decoders import PairwiseBilinearDecoder, ElementwiseLinearDecoder
