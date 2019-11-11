@@ -122,7 +122,7 @@ python-dateutil==2.7.4
 python-jose==2.0.2
 pytorch-pretrained-bert==0.1.2
 pytz==2017.3
-PyYAML==3.13
+PyYAML==5.1
 pyzmq==17.1.2
 qtconsole==4.4.2
 regex==2018.1.10
