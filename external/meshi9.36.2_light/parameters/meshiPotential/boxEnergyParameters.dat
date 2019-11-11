@@ -1,0 +1,13 @@
+#
+# file parameters for box energy
+# format:
+# <AtomType> <hydrophilic or hydrophobic> <preffered distance>
+TRO hydrophilic 2
+TRN hydrophilic 2
+EOE hydrophilic 2
+ECD hydrophilic 2
+ECG hydrophilic 2
+FCG hydrophobic 2
+FCD hydrophobic 2
+FCE hydrophobic 2
+FCZ hydrophobic 2
