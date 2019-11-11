@@ -1,0 +1,42 @@
+package meshi.molecularElements.aminoAcidsExtendedAtoms;
+import meshi.molecularElements.*;
+import meshi.geometry.*;
+/**
+ *
+ *                O
+ *                |
+ *       N - CA - C...n
+ *       |   |
+ *       H   CB - CG1
+ *           |
+ *           CG2
+ *
+ **/
+public class Val extends Monomer {
+    public final Atom H, N, CA, C, O, CB, CG1, CG2;
+    public static final String COMMENT = "From Levitt, JMB 168:592 (1983) table 2.\n"+
+ "                O\n"+
+ "                |\n"+
+ "       N - CA - C...n\n"+
+ "       |   |\n"+
+ "       H   CB - CG1\n"+
+ "           |\n"+
+ "           CG2\n";
+  public Val(int number,
+		double centerX, double centerY, double centerZ, 
+		double radius, int mode) {
+	super(NAME, number, position,centerX, centerY, centerZ, radius, mode);
+	atoms.add(CB = new AtomC(centerX, centerY, centerZ, radius,
+			    "CB",NAME,number,chain,this));
+	atoms.add(CG1 = new AtomC(centerX, centerY, centerZ, radius,
+			    "CG1",NAME,number,chain,this));
+	atoms.add(CG2 = new AtomC(centerX, centerY, centerZ, radius,
+			    "CG2",NAME,number,chain,this));
+	bonds.add(CA.bond(CB));
+	bonds.add(CB.bond(CG1));
+	bonds.add(CB.bond(CG2));
+    }
+    public String comment() {
+	return COMMENT;
+    }
+}
