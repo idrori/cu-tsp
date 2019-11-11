@@ -1,0 +1,83 @@
+{
+  "train_data_path": "data/100kmsa/train.txt",
+  "validation_data_path": "data/100kmsa/valid.txt",
+  "vocabulary": {
+    "directory_path": "proteinpt/vocab",
+    "extend": false
+  },
+
+  "dataset_reader": {
+    "type": "protein_reader",
+    "lazy": true
+  },
+
+  "model": {
+    "type": "protein_model",
+    "target": "dcalpha",
+    "aa_embedder": {
+      "aa": {
+        "type": "embedding",
+        "embedding_dim": 64,
+        "trainable": true,
+        "vocab_namespace": "aa"
+      }
+    },
+    "ss_embedder": {
+      "ss": {
+        "type": "embedding",
+        "embedding_dim": 64,
+        "trainable": true,
+        "vocab_namespace": "ss"
+      }
+    },
+    "encoder": {
+      "type": "gru_with_res_n_ln",
+      "input_size": 64,
+      "hidden_size": 32,
+      "num_layers": 4,
+      "bidirectional": true,
+      "residual": true,
+      "layer_norm": true
+    },
+    "msa_encoder": {
+      "feedforward": {
+        "input_dim": 2,
+        "num_layers": 2,
+        "hidden_dims": 2,
+        "activations": "relu",
+        "dropout": 0.2
+      },
+      "output_dim": 64,
+      "layer_norm": true
+    },
+    "feedforward": {
+      "input_dim": 64,
+      "num_layers": 2,
+      "hidden_dims": 64,
+      "activations": "relu",
+      "dropout": 0.2,
+      "residual": true,
+      "layer_norm": true
+    },
+    "use_ss": true,
+    "use_positional_encoding": true,
+    "input_dropout": 0.2
+  },
+
+  "iterator": {
+    "type": "basic",
+    "batch_size": 32,
+    "max_instances_in_memory": 2000
+  },
+
+  "trainer": {
+    "num_serialized_models_to_keep": 1,
+    "num_epochs": 9999999,
+    "patience": 20,
+    "cuda_device": 0,
+    "optimizer": {
+      "type": "adam",
+      "lr": 0.001
+    }
+  }
+}
