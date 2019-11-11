@@ -1,0 +1,1 @@
+from proteintf.dataset_readers.protein_dataset_reader import ProteinDatasetReader

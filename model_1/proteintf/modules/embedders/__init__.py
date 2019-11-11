@@ -1,0 +1,1 @@
+from proteintf.modules.embedders.protein_embedder import ProteinEmbedder
