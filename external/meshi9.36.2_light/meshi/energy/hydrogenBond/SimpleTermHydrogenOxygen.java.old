@@ -1,0 +1,235 @@
+package meshi.energy.hydrogenBond;
+
+import java.util.Iterator;
+
+import meshi.geometry.DistanceMatrix;
+import meshi.geometry.MatrixRow;
+import meshi.geometry.Distance;
+import meshi.geometry.DistanceList;
+import meshi.util.Updateable;
+import meshi.util.MeshiList;
+import meshi.util.MeshiIterator;
+import meshi.util.filters.Filter;
+import meshi.molecularElements.Atom;
+
+/**
+ * @author amilev
+ *
+ **/
+public class HBondList extends MeshiList implements Updateable {
+
+    //--------------------------------- data fields -----------------------------
+
+    
+    /*
+     * The  PairsList updated every X steps.
+     */
+    private final int UPDATE_EVERY_X_STEPS = 50;
+    ///*
+    // * List of the candidate to hydrogen bonding given by the DistanceMatrix object
+    // */
+    //protected DistanceList nonBondedList;
+    /*
+     * List of all the new HB elements that were added to the  hBondList in the last update call.
+     */
+    protected DistanceList newhBondList;
+    /*
+     * List of all the HB elements
+     */
+    protected DistanceList  hBondList;
+
+    /*
+     * get the parameters (epsilon, sigma) of each element
+     */
+    private HydrogenBondsParametersList parametersList;
+    private DistanceMatrix distanceMatrix;
+
+    /*
+     * Used to avoid reupdate in the same minimization step 
+     */
+    private int numberOfUpdates =0;
+    /*
+     *  hBondList should be updated when countUpdates >= UPDATE_EVERY_X_STEPS
+     */
+    private int countUpdates = 0;
+    /*
+     * Filter for update
+     */
+    private final IsGoodPair isGoodPair = new IsGoodPair();
+        
+    public final DistanceList newhBondList() { return newhBondList;}   
+    public final DistanceList hohBondList() { return  hBondList;}
+    public final int countUpdates() {return countUpdates;}
+
+    //-------------------------------- constructors --------------------------------
+    
+	/**
+	 * @param distanceMatrix
+	 */
+	public HBondList(DistanceMatrix distanceMatrix,
+                     HydrogenBondsParametersList parametersList) {
+        this.parametersList = parametersList;
+        this.distanceMatrix = distanceMatrix;
+        hBondList = new DistanceList();
+        //nonBondedList = distanceMatrix.nonBondedList();
+        //update(nonBondedList);
+        update_dm();
+    }
+
+    //--------------------------------------- methods ---------------------------------------
+    
+	/* (non-Javadoc)
+	 * @see meshi.util.Updateable#update(int)
+	 */
+	public void update(int numberOfUpdates) {
+		if (numberOfUpdates == this.numberOfUpdates+1) {
+		    update();
+		    this.numberOfUpdates++;
+		}   
+		else if (numberOfUpdates != this.numberOfUpdates) 
+		    throw new RuntimeException("Something weird with HbondList.update(int numberOfUpdates)\n"+
+                                       "numberOfUpdates = "+numberOfUpdates+" this.numberOfUpdates = "+this.numberOfUpdates);
+	}
+
+
+	private void update() {
+        if (countUpdates == UPDATE_EVERY_X_STEPS) {
+			 hBondList.reset();                         			
+            countUpdates = 0;
+			//nonBondedList = distanceMatrix.nonBondedList();
+            //update(nonBondedList);
+            update_dm();
+            newhBondList = new DistanceList();
+		}
+        else if (countUpdates > UPDATE_EVERY_X_STEPS)
+            throw new RuntimeException("Something weird with HbondList.update()\n"+
+                                       "countUpdates = "+countUpdates+" UPDATE_EVERY_X_STEPS  = "+UPDATE_EVERY_X_STEPS);
+		else {
+            countUpdates++;
+		    newhBondList = new DistanceList();
+		    updateTwoLists(distanceMatrix.newNonBondedList());
+		}	            
+	}
+
+	/**
+	 * @param nonBondedList of new distances that where added after  HbondList was updated in the last time
+	 */
+    private void updateTwoLists(DistanceList atomPairList) {
+	    Iterator atomPairs = atomPairList.iterator();
+	    Distance pair;
+        while ((pair = (Distance) atomPairs.next()) != null) {
+            if (isGoodPair.accept(pair)) {
+                HB_DistanceAttribute distanceAttribute = new HB_DistanceAttribute(true);
+                distanceAttribute.setParameters((HydrogenBondsParameters) parametersList.parameters(pair));
+                pair.addAttribute(distanceAttribute);
+                 hBondList.fastAdd(pair);
+                newhBondList.fastAdd(pair);		
+            }   
+        }   
+    }
+    
+    private void update(DistanceList  nonBondedList) {
+	    Iterator atomPairs = nonBondedList.iterator();            
+	    Distance pair;
+	    while ((pair = (Distance) atomPairs.next()) != null) {
+            if (isGoodPair.accept(pair)) {
+                HB_DistanceAttribute distanceAttribute = new HB_DistanceAttribute(true);
+                distanceAttribute.setParameters((HydrogenBondsParameters) parametersList.parameters(pair));
+                pair.addAttribute(distanceAttribute); 
+                hBondList.fastAdd(pair);                                	        
+            }       
+        }       
+    }   
+
+    /*
+     * the update is done by first go over the heads atoms of the row in distance matrix
+     * and just then (only if the head atom is Hydrogen or Oxygen) go over the rows themself.
+     * (more afficient ?)
+     */
+    private void update_dm(){
+        Distance pair;
+        Atom headAtom;
+        MatrixRow matrixRow;
+        Iterator rows = distanceMatrix.rowIterator();
+        Iterator rowIterator;
+        HB_AtomAttribute headAttribute; 
+        while((matrixRow = (MatrixRow) rows.next()) != null){
+            headAtom = matrixRow.atom();
+            headAttribute = (HB_AtomAttribute) headAtom.getAttribute(HB_AtomAttribute.key); 
+            if (headAttribute != null){//meens that it is H or O !
+                rowIterator = matrixRow.nonBondedIterator();
+                while((pair = (Distance) rowIterator.next()) != null){
+                    if(isGoodPair.accept(pair)){
+                        HB_DistanceAttribute distanceAttribute = new HB_DistanceAttribute(true);
+                        distanceAttribute.setParameters
+                            ((HydrogenBondsParameters) parametersList.parameters(pair));
+                        pair.addAttribute(distanceAttribute); 
+                         hBondList.fastAdd(pair);
+                    }
+                }//while
+            }//if
+        }//while there is more rows
+    }
+
+    public Iterator hBondIterator() {
+        return (Iterator) new HBondIterator(hBondList);// HBondIterator is an internal class.
+    }
+
+    public Iterator newhBondIterator() {
+        return (Iterator) new HBondIterator(newhBondList);// HBondIterator is an internal class.
+    }
+
+     //--------------------------- internal class IsWithInRmax ---------------------------
+
+    static class IsWithInRmax implements Filter{
+
+        private double dis,rMax;
+        public IsWithInRmax(){
+            super();
+            rMax = DistanceMatrix.rMax();
+        }
+
+        public boolean accept(Object obj) {
+            Distance distance = (Distance)obj;
+            return ((rMax-distance.distance()) >= 0);
+        }
+    }
+    
+
+
+    //--------------------------- internal class HBondIterator ---------------------------
+    
+    private  class HBondIterator extends MeshiIterator  {
+        IsWithInRmax isWithInRmax = new IsWithInRmax();
+        
+        public HBondIterator(MeshiList list){
+            super(list);
+        }
+
+        /*
+         * @return the next element that itas 2 atoms are within Rmax or Null if there is no such element
+         */
+        public Object next() {
+            return super.next(isWithInRmax);
+        }
+            /*            if (modCount != list.modCount()) 
+                throw new RuntimeException("List has changed - iterator is unusable");
+            HydrogenOxygenPair hoPair =  (HydrogenOxygenPair)currecnt();
+            if (hoPair != null){
+                boolean withinRmax = hoPair.withinRmax();
+                while (!withinRmax) {
+                    current++;
+                    if (current >= size) return null;
+                    hoPair =  (HydrogenOxygenPair)internalArray[current];
+                    withinRmax = hoPair.withinRmax();                                            
+                }
+            }
+            current++;
+            return internalArray[current-1];*/
+                  
+    }    
+}
+
+
+
+
