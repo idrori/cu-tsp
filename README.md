@@ -1,2 +1,2 @@
-# cu-tsp
-Implementation of Accurate Protein Structure Prediction by Embeddings and Deep Learning Representations
+[Accurate Protein Structure Prediction by Embeddings and Deep Learning Representations,
+Iddo Drori, Darshan Thaker, Arjun Srivatsa, Daniel Jeong, Yueqi Wang, Linyong Nan, Fan Wu, Dimitri Leggas, Jinhao Lei, Weiyi Lu, Weilong Fu, Yuan Gao, Sashank Karri, Anand Kannan, Antonio Khalil Moretti, Mohammed AlQuraishi, Chen Keasar, Itsik Pe’er](https://github.com/idrori/cu-tsp/blob/master/paper/CUProtein.pdf)
