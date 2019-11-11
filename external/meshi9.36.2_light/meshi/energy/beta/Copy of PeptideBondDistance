@@ -1,0 +1,112 @@
+package meshi.energy.beta;
+
+import meshi.geometry.FreeDistance;
+import meshi.molecularElements.*;
+
+import java.util.*;
+
+
+/**
+ * Created by IntelliJ IDEA.
+ * User: keasar
+ * Date: 22/01/2010
+ * Time: 17:41:40
+ * To change this template use File | Settings | File Templates.
+ */
+public class PeptideBondDistance {
+    public static final double  ALPAH = 100;
+    public final PeptideBond pb1, pb2;
+    public final FreeDistance pb1Hpb2O, pb2Hpb1O;
+    private double d12, d12_3, d12_4, dD12_4Dx, dD12_4Dy, dD12_4Dz, inv_d12_4,  dInv_d12_4Dx , dInv_d12_4Dy, dInv_d12_4Dz;
+    private double d21, d21_3, d21_4, dD21_4Dx, dD21_4Dy, dD21_4Dz, inv_d21_4,  dInv_d21_4Dx , dInv_d21_4Dy, dInv_d21_4Dz;
+    private double dDistanceDinv_d12_4_plus_d21_4, inv_d12_4_plus_inv_d21_4;
+    private double core, dCoreDx12, dCoreDy12, dCoreDz12,  dCoreDx21, dCoreDy21, dCoreDz21;
+    private double distance, distance3, dDistanceDx12, dDistanceDy12, dDistanceDz12, dDistanceDx21, dDistanceDy21, dDistanceDz21;
+
+    public  PeptideBondDistance(PeptideBond pb1, PeptideBond pb2){
+        this.pb1=pb1;
+        this.pb2=pb2;
+        pb1Hpb2O = new FreeDistance(pb1.H, pb2.O);
+        pb2Hpb1O = new FreeDistance(pb2.H, pb1.O);
+        update();
+        //System.out.println("Created "+this);
+    }
+    /* This method was used to test the derivation of the distance (and was useful in finding a bug.
+    public void update() ;
+        double epsilon = 0.0000001;
+        update1();
+        double saveDistance = distance;
+        double saveDerivativeX12 = dDistanceDx12;
+        double saveDerivativeY12 = dDistanceDy12;
+        double saveDerivativeZ12 = dDistanceDz12;
+        double saveDerivativeX21 = dDistanceDx21;
+        double saveDerivativeY21 = dDistanceDy21;
+        double saveDerivativeZ21 = dDistanceDz21;
+        pb2.H.addToZ(epsilon);
+        update1();
+        System.out.println((distance-saveDistance)/epsilon);
+        System.out.println("x12 "+saveDerivativeX12);
+        System.out.println("y12 "+saveDerivativeY12);
+        System.out.println("z12 "+saveDerivativeZ12);
+        System.out.println("x21 "+saveDerivativeX21);
+         System.out.println("y21 "+saveDerivativeY21);
+         System.out.println("z21 "+saveDerivativeZ21);
+          if (1 == 1) throw new RuntimeException();                 
+    }                             */
+
+    public void update() {
+        pb1Hpb2O.update();
+        pb2Hpb1O.update();
+
+        d12 = pb1Hpb2O.distance();
+        d12_3 = d12*d12*d12;
+        d12_4 = d12_3*d12;
+        dD12_4Dx = 4*d12_3*pb1Hpb2O.dDistanceDx();
+        dD12_4Dy = 4*d12_3*pb1Hpb2O.dDistanceDy();
+        dD12_4Dz = 4*d12_3*pb1Hpb2O.dDistanceDz();
+        inv_d12_4 = 1/d12_4;
+        dInv_d12_4Dx = -1*inv_d12_4*inv_d12_4*dD12_4Dx;
+        dInv_d12_4Dy = -1*inv_d12_4*inv_d12_4*dD12_4Dy;
+        dInv_d12_4Dz = -1*inv_d12_4*inv_d12_4*dD12_4Dz;
+
+        d21 = pb2Hpb1O.distance();
+        d21_3 = d21*d21*d21;
+        d21_4 = d21_3*d21;
+        dD21_4Dx = 4*d21_3*pb2Hpb1O.dDistanceDx();
+        dD21_4Dy = 4*d21_3*pb2Hpb1O.dDistanceDy();
+        dD21_4Dz = 4*d21_3*pb2Hpb1O.dDistanceDz();
+        inv_d21_4 = 1/d21_4;
+        dInv_d21_4Dx = -1*inv_d21_4*inv_d21_4*dD21_4Dx;
+        dInv_d21_4Dy = -1*inv_d21_4*inv_d21_4*dD21_4Dy;
+        dInv_d21_4Dz = -1*inv_d21_4*inv_d21_4*dD21_4Dz;
+
+        inv_d12_4_plus_inv_d21_4 = inv_d12_4+inv_d21_4;
+        core = 2/ inv_d12_4_plus_inv_d21_4;
+        dCoreDx12 = -2/(inv_d12_4_plus_inv_d21_4*inv_d12_4_plus_inv_d21_4)*dInv_d12_4Dx;
+        dCoreDy12 = -2/(inv_d12_4_plus_inv_d21_4*inv_d12_4_plus_inv_d21_4)*dInv_d12_4Dy;
+        dCoreDz12 = -2/(inv_d12_4_plus_inv_d21_4*inv_d12_4_plus_inv_d21_4)*dInv_d12_4Dz;
+        dCoreDx21 = -2/(inv_d12_4_plus_inv_d21_4*inv_d12_4_plus_inv_d21_4)*dInv_d21_4Dx;
+        dCoreDy21 = -2/(inv_d12_4_plus_inv_d21_4*inv_d12_4_plus_inv_d21_4)*dInv_d21_4Dy;
+        dCoreDz21 = -2/(inv_d12_4_plus_inv_d21_4*inv_d12_4_plus_inv_d21_4)*dInv_d21_4Dz;
+
+        distance = Math.sqrt(Math.sqrt(core));
+        distance3 = distance*distance*distance;
+        dDistanceDx12 = 0.25/distance3*dCoreDx12;
+        dDistanceDy12 = 0.25/distance3*dCoreDy12;
+        dDistanceDz12 = 0.25/distance3*dCoreDz12;
+        dDistanceDx21 = 0.25/distance3*dCoreDx21;
+        dDistanceDy21 = 0.25/distance3*dCoreDy21;
+        dDistanceDz21 = 0.25/distance3*dCoreDz21;
+     }
+    public double distance() {return distance;}
+    public double dDistanceDx12() {return dDistanceDx12;}
+    public double dDistanceDy12() {return dDistanceDy12;}
+    public double dDistanceDz12() {return dDistanceDz12;}
+    public double dDistanceDx21() {return dDistanceDx21;}
+    public double dDistanceDy21() {return dDistanceDy21;}
+    public double dDistanceDz21() {return dDistanceDz21;}
+    public String toString() {
+        return "PeptideBondDistance ("+pb1+";"+pb2+") "+distance;
+    }
+
+}
