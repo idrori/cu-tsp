@@ -86,7 +86,7 @@ neo4j-driver==1.6.2
 neotime==1.7.1
 networkx==2.2
 nltk==3.3
-notebook==5.7.0
+notebook==5.7.8
 numpy==1.15.3
 numpydoc==0.8.0
 overrides==1.9
