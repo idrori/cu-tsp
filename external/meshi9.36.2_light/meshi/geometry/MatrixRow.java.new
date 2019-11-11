@@ -1,0 +1,301 @@
+package meshi.geometry;
+import meshi.energy.hydrogenBond.IsGoodPair;
+import  meshi.molecularElements.*;
+import  meshi.parameters.*;
+import java.util.*;
+import meshi.util.filters.*;
+import meshi.util.*;
+public  class MatrixRow {
+    public final Atom atom;
+    public final int number;
+    int searchStart = 0;
+    MatrixRow[] matrix;
+    double rMax2;
+    double rMaxPlusBuffer2;
+    protected Distance [] distances;
+    private int size;
+    private int capacity;
+    
+    /**
+     * use to filter the distances in newHydrogenBondsList
+     **/
+    private boolean setHO;
+    private IsGoodPair isGoodPair = null;
+
+     
+    public MatrixRow(Atom atom, int capacity, MatrixRow[] matrix) {
+	this.capacity = capacity;
+        distances = new Distance [capacity];
+	size = 0;                 
+	this.atom = atom;
+	number = atom.number();
+	this.matrix = matrix;
+	rMax2 = DistanceMatrix.rMax2;
+	rMaxPlusBuffer2 = DistanceMatrix.rMaxPlusBuffer2;
+	setHO = DistanceMatrix.setHO();
+	if (setHO)isGoodPair = new IsGoodPair();
+
+    }
+	
+    public int update() {
+	boolean doneRow = false;
+	int out = 0;
+	for (int iDistance = 0; (iDistance < size) & (! doneRow); iDistance++) {
+	    Distance distance = distances[iDistance];
+	    int atom2number = distance.atom2Number();
+	    if (atom2number >= number) doneRow = true;
+	    else {
+		boolean keep = distance.update(rMax2,rMaxPlusBuffer2);
+		if (!keep) {
+		    remove(atom2number);
+		    matrix[atom2number].remove(number);
+		    iDistance--;
+		}
+		else out++;
+	    }
+	}
+	return out;
+    }
+
+    public int updateIncludingMirrors() {
+	int out = 0;
+	for (int iDistance = 0; (iDistance < size); iDistance++) {
+	    Distance distance = distances[iDistance];
+	    int atom2number = distance.atom2Number();
+	    if (atom2number >= number) distance = ((DistanceMirror) distance).source;
+	    boolean keep = distance.update(rMax2,rMaxPlusBuffer2);
+	    if (!keep) {
+		remove(atom2number);
+		matrix[atom2number].remove(number);
+		iDistance--;
+	    }
+	    else out++;
+	}
+	return out;
+    }
+
+    protected Distance distanceAt(int index) {
+      if (index >= size) 
+	  throw new RuntimeException("index out of bounds "+index);
+      return distances[index];
+    }  
+  
+    public int size() {return size;}
+    
+    protected final Distance binarySearch(int key ){
+	int low = 0, middle, high = size-1;
+	Distance distance;
+	int atom2number;
+	while  (low <= high )   {
+	    middle = (low+high)>>1;
+	    distance =  distances[middle];
+	    atom2number = distance.atom2Number;
+	    if (key == atom2number)
+		return distance;
+	    else 
+		if (key <  atom2number) high = middle - 1;
+		else low = middle + 1;
+	}
+	return null;
+    }
+    protected void resetSerialSearch() {searchStart = 0;}
+
+    protected final Distance serialBinarySearch(int key ){
+	int low = searchStart, middle, high = size-1;
+	Distance distance;
+	int atom2number;
+	while  (low <= high )   {
+	    middle = (low+high)>>1;
+	    distance = distances[middle];
+	    atom2number = distance.atom2Number;
+	    if (key == atom2number) {
+                searchStart = middle+1;
+		return distance;
+            }
+	    else 
+		if (key <  atom2number) high = middle - 1;
+		else low = middle + 1;
+	}
+	return null;
+    }
+      
+    protected final Distance serialSearch(int key ){
+	Distance distance = null; 
+	int searchIndex = searchStart;
+	int atom2number = -1;
+
+	while ((searchIndex < size) &&
+	       ((atom2number = (distance = distances[searchIndex]).atom2Number) < key)) 
+	    searchIndex++;
+	if (atom2number == key) {
+	    atom2number = -1;
+	    searchStart = searchIndex+1;
+	    return distance;
+	}
+	searchIndex = searchStart-1;
+	if (searchIndex >= size) searchIndex = size-1;
+	while ((searchIndex >= 0) &&
+	       ((atom2number = (distance = distances[searchIndex]).atom2Number) > key))
+	    searchIndex--;
+	if (atom2number == key) {
+	    searchStart = searchIndex+1;
+	    atom2number = -1;	
+	    return distance;
+	}
+	return null;
+    }
+    
+    
+    public Distance remove(int key) {	
+	int low = 0, middle, high = size-1;
+	Distance dis;
+	int atom2number;
+	while  (low <= high )   {
+	    middle = (low+high)>>1;
+	    dis =  distances[middle];
+	    atom2number = dis.atom2Number;
+	    if (key == atom2number){
+		for (int i = middle; i < size-1; i++)		    	
+                    distances[i] = distances[i+1];  
+		size--;
+		return dis;
+	    }
+	    else 
+		if (key <  atom2number) high = middle - 1;
+		else low = middle + 1;
+	}
+	throw new RuntimeException("Trying to remove ("+atom.number()+","+key+") from a matrix row: \n"+
+				   atom+"\nthat does not include it.");
+    }
+    
+    public void addCell(GridCell cell, DistanceList newHydrogenBondsList){
+	double x = atom.x();
+	double y = atom.y();
+	double z = atom.z();
+	double dx, dy, dz, d2; 
+	Iterator cellAtoms = cell.iterator();
+	Atom cellAtom;
+	int largeNumber = -1, smallNumber = -1;
+	Distance distance = null;
+	double rMaxPlusBuffer2 = DistanceMatrix.rMaxPlusBuffer2;
+	double rmax2 = rMax2;
+	while ((cellAtom = (Atom) cellAtoms.next())!= null) {           
+	    if (binarySearch(cellAtom.number())== null){
+              if (cellAtom != atom) {
+		dx = x-cellAtom.x();
+		dy = y-cellAtom.y();
+		dz = z-cellAtom.z();
+		d2 = dx*dx+dy*dy+dz*dz;             
+		if (d2 < rMaxPlusBuffer2) {		   
+			int cellAtomNumber = cellAtom.number(); 
+			if (number > cellAtomNumber) {
+			    largeNumber = number;
+			    smallNumber = cellAtomNumber;					
+			    distance = new Distance(atom,cellAtom,d2,dx,dy,dz,rmax2);
+			}
+			else {
+			    largeNumber = cellAtomNumber;
+			    smallNumber = number;
+			    distance = new Distance(cellAtom,atom,d2,-dx,-dy,-dz,rmax2);
+			}
+			matrix[largeNumber].insert(distance);
+			matrix[smallNumber].insert(new DistanceMirror(distance));
+			if (setHO && isGoodPair.accept(distance))
+			newHydrogenBondsList.fastAdd(distance);
+		    }
+                else DistanceMatrix.counterDisSqr++;
+		}               
+	    }
+	}
+		
+    }
+    
+    public boolean add(Distance d) {
+	boolean out = addNoSort(d);
+	sort();
+	return out;
+    }
+
+    
+    public boolean addNoSort(Distance d){
+        if (size < capacity) {
+              distances[size] = (Distance) d;
+              size++;              
+              return true;
+        }
+        else {
+              capacity *= 1.5;
+              Distance [] newArray = new Distance[capacity];
+              for (int i = 0; i < size; i++)
+                   newArray[i] = distances[i];
+              distances = newArray;
+              return add(d) ;
+              }        
+    }        
+    
+    protected void sort(){
+        Arrays.sort(distances,0,size);     
+    }        
+   
+    public int insert(Distance d) {	
+        if (size+1>= capacity) {
+              capacity *= 1.5;
+              Distance [] newArray = new Distance[capacity];
+              for (int i = 0; i < size; i++)
+                    newArray[i] = distances[i];
+              distances = newArray;
+              return insert(d) ;
+        }
+        if (size == 0) {
+              distances[0] = d;
+              size++;
+              return 0;
+        }
+        if (distances[0].atom2Number > d.atom2Number) {                        
+              for (int k = size; k > 0; k--)
+              distances[k] = distances[k-1];        		      
+              distances[0] = d;
+              size++;
+              return 0;        
+        }
+        for (int i = 0; i < size - 1; i++)                 
+        if ((distances[i].atom2Number < d.atom2Number) & (distances[i+1].atom2Number >= d.atom2Number)) { 
+               for (int k = size; k > i+1; k--)
+                   distances[k] = distances[k-1];        		              		                              
+               distances[i+1] = d;
+               size++;
+               return i+1;	                            
+        }	   	
+        distances [size] = d;	
+        size++;
+        return size;	
+    }
+          
+    public Iterator nonBondedIterator() {
+	return new RowIterator();
+    }
+    private class RowIterator implements Iterator {
+	int current;
+	public RowIterator() {
+	    current = 0;
+	}
+	public Object next() {
+	    if (current >=size) return null;
+	    Distance distance = distances[current];
+	    if (distance.mirror) return null;
+	    current++;
+	    if (distance.distance() < Distance.INFINITE_DISTANCE) return distance;
+	    else return next();
+	}
+            
+	public boolean hasNext() {
+	    return( current < size);
+	}
+	public void remove() {
+	    throw new RuntimeException("not implemented");
+	}
+
+    }
+
+}
+

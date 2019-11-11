@@ -1,0 +1,629 @@
+package meshi.geometry;
+import  meshi.molecularElements.*;
+import  meshi.parameters.*;
+import java.util.*;
+import meshi.util.filters.*;
+import meshi.util.*;
+/**
+ * Where all the headache of {@link meshi.geometry.Distance distances} is handled.                   <br>
+ *
+ * Almost any measurable feature of a molecule is related to distances
+ * between pairs of {@link meshi.molecularElements.Atom Atoms}.
+ * Thus, The calculation of distances (and their inverse and derivatives)
+ * are typically a computational bottleneck in structural 
+ * biology applications. In all applications that we are aware of (Please,
+ * enlighten us if you know better) distance calculation is done as part 
+ * of the procedures that use it (say, as part of the van-der-Waals energy 
+ * calculation). As a result the distance between two atoms may be calculated 
+ * more then once. For example the distance between two atoms may be 
+ * calculated both during angle and torsion angle energies calculations.
+ * In Meshi we tried to encapsulate all distance related issues in few 
+ * classes: {@link meshi.geometry.Distance Distance}, its subclasses and this one. 
+ * <p> 
+ * The motivation behind this class is twofold: first, to keep all the headache of 
+ * cutoff distances (see below) in a single place. Second, to arrange all the                    
+ *{@link meshi.geometry.Distance 
+ * distances                                                                                     } 
+ * of a molecular system in a single data 
+ * structure so that no distance is calculated more than once in a single energy 
+ * evaluation. 
+ *</p><p>
+ * <b>
+ * Distance cutoff                                                                               </b><br>
+ * Calculating and storing all the distances of a molecular system requires O(n^2) time 
+ * and storage, where <b>n</b> is the number of atoms. Heuristic algorithms reduces it to O(n),
+ * under certain assumptions.
+ * The heuristic algorithms (see references below) relays on three characteristics 
+ * of energy functions and energy based simulations:
+ * <ol>
+ *   <li> Atoms have a characteristic minimal distance from other atoms. Thus, the distance 
+ *        matrix is typically dominated by large distances.
+ *   <li> Energy functions typically decay with distance and become negligible when the 
+ *        atoms are far apart. <br>
+ *        This implies that even if the energy function is formally defined over all distances,
+ *        distances above some threshold can be considered "infinite" and having no energy contribution.
+ *   <li> During most of an energy based simulation (e.g. MD, minimization, MC etc.) the atom
+ *        movements are rather slow, and the distance matrix changes very little between 
+ *        consecutive simulation steps.<br>
+ *        This implies that most of the atom pairs that are "infinitely" distant in a given 
+ *        simulation step will remain so in the next step.
+ * </ol> 
+ * The current implementation requires O(n^2) storage and O(n) CPU time. Future 
+ * implementations are intended to be more efficient.
+ * </p><p>
+ *
+ * The first step of the algorithm is to separate the set of distances into two groups:<br>
+ * <ol>
+ *   <li> bonded distances - these are distances between atoms that are not likely to be too 
+ *        far apart at any time and thus, algorithms based on distance cutoffs are not applicable to them. 
+ *        Typically these are atoms separated by up to three or four covalent bonds.
+ *	  The number of these distances is O(n) so they do not add to the computational complexity.
+ *   <li> unbonded distances - these are distances between atoms that may or may not be close in space.
+ * </ol> 
+ *
+ 
+ * by two predefined points: rMax & rmax+buffer<br>
+ * <ol>
+ *    <li> 0 < distance <= rMax                                                                              <br>
+ *         It is assumed that all non zero interactions occure within this distance range.                   <br>
+ *         The algorithm garenties that if a pair of atoms have a distance within this range 
+ *         it is included in the nonbonded list.</li>
+ *    <li> rMax < distance <= rMax + buffer                                                               <br>
+ *         Some of the atom pairs with a distance within this range are included in the nonbonded list.   </li>
+ *    <li> rMax < distance                                                                                <br>
+ *         These atom pairs are not included in the nonbonded list</li>
+ *
+ *  The number of atom-pairs with inter-atomic distances in the first two regions is O(n). These 
+ *  atom-pairs are stored in a list called the non-bonded-list. The only O(n^2) task is to test for 
+ *  each of the O(n^2) atom-pairs currently in the third region whether it moved to the first two. This 
+ *  is where our assumption that changes in the inter-atomic distances are slow enters. Consider a pair of 
+ *  atoms A1 and A2 that were in the coordinates C1(S) and C2(S) at some step S of the simulation
+ *  such that the distance between them 
+ *  D(C1(S),C2(S)) > rMax+buffer. D(C1(S+T),C2(S+T)) the distance between these atoms at some later 
+ *  step S+T may be smaller or equal to rMax only if at least for one of the atoms 
+ *  D(C(S),C(S+T)) > buffer/2. This condition is tested in O(n) and assuming slow atoms movements 
+ *  should, for most atoms fail. Only when this condition is satisfied for one of the proteins 
+ *  We should check all it's distances from other atoms again with again O(n) complexity.
+ *  
+ * </p><p>
+ *  
+ **/
+public class DistanceMatrix extends MeshiProgram implements Residues, Updateable {
+	
+	
+	
+    /*------------------------------------------ object variables --------------------------------------------*/
+    public static final double DEFAULT_RMAX = 5.5;
+    public static final double DEFAULT_BUFFER = 1;
+    public static final int DEFAULT_BONDED_LIST_DEPTH = 5;
+    public static final boolean IF_SET_HO = true;
+    protected static boolean setHO; 
+    private final int SORT = 50;        
+    private int nSort;
+    private final int DEAD_MAX = 100;
+    private int nDead;
+    private Indicator  indicatorToUpdateHB;
+    private Distance infiniteDistance = new Distance();
+    public Distance infiniteDistance() {return infiniteDistance;}
+    protected static long counterDis = 0; //in Distance - number of atoms in the sphere rMax+buffer 
+    protected static long counterDisSqr = 0;  //in MatrixRow +in Distance = # of checked atoms, those are out of sphere rMas+buffer	
+	
+    /**
+     * The list of all atoms in the molecular system.
+     */
+    protected AtomList atomList;
+    /**
+     * An array of all atoms in the molecular system.
+     */
+    protected Object[] atomArray;
+	
+    /**
+     * Internal data structure.
+     **/
+    protected MatrixRow[] matrix; 
+    protected Grid grid;
+    /**
+     * Maximal distance for nonzero interactions.
+     **/
+    protected static double rMax;
+    protected static double rMax2;
+    protected static double edge;
+	
+    /**
+     * rMax+buffer
+     **/
+    protected static double rMaxPlusBuffer;
+	
+    /**
+     * (rMax+buffer)^2
+     **/
+    protected static double rMaxPlusBuffer2;
+	
+    protected double buffer;
+	
+    /**
+     * (buffer/3)^2
+     **/
+    protected static double bufferOneThirdSqr;
+	
+    /**
+     * Atom pairs with inter-atomic distances below rMax (and some of the pairs below rMax+buffer). 
+     **/
+    protected DistanceList nonBondedList = new DistanceList();
+	
+    /** 
+     * Distances of good hydrogen bonds candidate that were added in the current update opperation
+    **/
+    protected DistanceList newHydrogenBondsList = new DistanceList();
+
+    /**
+     * Atom pairs with inter-atomic distances that are always relatively small.
+     **/
+	
+    protected DistanceList  bondedList; 
+    protected DistanceList  frozenBondedList;
+ 
+    private int newConstant = 0;
+    private boolean nonBondedFlag = true;
+    // private AtomPairList addToBondedList;
+    protected int bondedListDepth;
+    private int numberOfUpdates = 0;
+    protected boolean debug = false;
+    /**
+     * Enter DistanceMatrix debug mode.
+     **/
+    public void debugON() {debug = true;}
+    /**
+     * Exit DistanceMatrix debug mode.
+     **/
+    public void DebugOFF() {debug = false;}
+    private DistanceList frozenNonBonded = null;
+    /*-------------------------------------------- constructors -----------------------------------------------*/
+    protected DistanceMatrix() {}
+    /**
+     * A distance matrix with practicaly no distance cutoffs and with "hard" atoms.
+     **/
+   public DistanceMatrix(AtomList atomList) {
+	this(atomList, 
+	     DEFAULT_RMAX, //rMax
+	     DEFAULT_BUFFER, // buffer             
+             DEFAULT_RMAX, //edge of Grid
+	     IF_SET_HO,
+	     1// bondedListDepth
+	     );
+    }
+	
+    public DistanceMatrix(Protein protein) {
+	this(protein.atoms(), // atom list
+	     DEFAULT_RMAX,
+	     DEFAULT_BUFFER, // buffer
+             DEFAULT_RMAX, //edge of Grid
+	     IF_SET_HO,
+	     DEFAULT_BONDED_LIST_DEPTH// bondedListDepth
+	     );
+    }
+	
+		
+    public DistanceMatrix(Protein protein, int bondedListDepth) {
+	this(protein.atoms(), // atom list
+	     DEFAULT_RMAX,    //rMax
+	     DEFAULT_BUFFER, // buffer
+             DEFAULT_RMAX, //edge of Grid
+	     IF_SET_HO,
+	     bondedListDepth);
+    }
+	
+    public DistanceMatrix(AtomList atomList, double rMax, double buffer) {
+	this(atomList, 
+	     rMax, 
+	     buffer, 
+             rMax, // edge of Grid
+	     IF_SET_HO,
+	     DEFAULT_BONDED_LIST_DEPTH// bondedListDepth
+	     );
+    }
+
+    public DistanceMatrix(AtomList atomList, double rMax, double buffer, AtomPairList addToBondedList) {
+	this(atomList, 
+	     rMax, buffer, 
+             rMax,  // edge of Grid
+	     IF_SET_HO,
+	     DEFAULT_BONDED_LIST_DEPTH);
+    }
+      
+    public DistanceMatrix(AtomList atomList, double rMax, double buffer, double edge) {
+	this(atomList, 
+	     rMax, buffer, 
+             edge,  // edge of Grid
+	     IF_SET_HO,
+	     DEFAULT_BONDED_LIST_DEPTH);
+    }
+     
+    public DistanceMatrix(AtomList atomList, double rMax, double buffer, double edge, boolean setHO) {
+	this(atomList, 
+	     rMax, buffer, 
+	     edge,  // edge of Grid
+	     setHO,
+	     DEFAULT_BONDED_LIST_DEPTH);
+    }
+
+    public DistanceMatrix(AtomList atomList, double rMax, double buffer, int bondedListDepth) {
+          this(atomList, rMax, buffer, rMax, IF_SET_HO,  bondedListDepth);
+    }
+
+   public DistanceMatrix(AtomList atomList, double rMax, double buffer, double edge, boolean setHO,
+			  int bondedListDepth) {
+	// Setting the contants used for calculating the reported distance.
+	this.atomList = atomList;
+	atomList.renumber();
+	this.buffer = buffer;        
+	DistanceMatrix.rMax = rMax;
+        this.edge = edge;
+	this.setHO = setHO;
+	this.bondedListDepth = bondedListDepth;
+	reset();
+    }	
+	
+    private void reset() {
+	atomArray  = atomList.toArrayOfAtoms();
+	Arrays.sort(atomArray);
+	rMax2 = rMax*rMax;
+	rMaxPlusBuffer  = rMax+buffer;
+	rMaxPlusBuffer2  = rMaxPlusBuffer*rMaxPlusBuffer;
+	bufferOneThirdSqr = buffer*buffer/9;
+	int size = atomArray.length;
+	nSort = 0;
+	nDead = 0;
+	indicatorToUpdateHB = new Indicator();
+	// Initialize the non-bonded-list and the previous coordinates.
+	newHydrogenBondsList.reset();
+	// Initialize the distance matrix.	
+	matrix = new MatrixRow[size];
+	for (int i = 0; i< size; i++)
+	    matrix[i] = new MatrixRow((Atom) atomArray[i], 200, matrix);        
+
+	// Generate bonded list.
+	bondedList = getBondedList(atomArray, bondedListDepth, matrix); 
+	frozenBondedList = new DistanceList();
+	Iterator iter = bondedList.iterator();
+	Distance bonded;
+	while ((bonded = (Distance) iter.next()) != null)
+	    if (bonded.atom1.frozen() & bonded.atom2.frozen())
+		frozenBondedList.add(bonded);
+	//bonded list.
+
+	Iterator bondedDistances = bondedList.iterator();
+	Distance distance;
+        grid = new Grid(atomArray, edge, rMax);
+        try { 
+   	  update();
+       }
+       catch (UpdateableException e) {
+	       atomList.print();
+	 throw new RuntimeException(" Cannot create grid. Apparently the atoms a spread over"+
+                                      " a very large volume");
+      }
+    }
+
+
+    /*------------------------------------------ update --------------------------------------------*/
+    /**
+     * Updates the distance matrix. 
+     **/
+    public void update(int numberOfUpdates) throws UpdateableException {
+	if (numberOfUpdates == this.numberOfUpdates+1) {
+	    this.numberOfUpdates++;
+	    update();
+            
+	}
+	else if (numberOfUpdates != this.numberOfUpdates) 
+	    throw new RuntimeException("Something weird with DistanceMatrix.update(int numberOfUpdates)\n"+
+				       "numberOfUpdates = "+numberOfUpdates+" this.numberOfUpdates = "+this.numberOfUpdates);
+    }				 
+      
+
+    private void update()  throws UpdateableException{
+	int length = matrix.length;
+	for (int iRow = 0; iRow <length; iRow++) 
+	    matrix[iRow].update();
+	int size = atomList.size();
+	newHydrogenBondsList.reset();
+        grid.build();
+        for (int iatom = 0; iatom < size; iatom++) {
+	    MatrixRow row = matrix[iatom];
+	    GridCell gridCell = grid.getCell(row.atom);
+	    row.addCell(gridCell, newHydrogenBondsList);
+        }
+	getNonBondedList();
+    }
+
+    
+    protected void getNonBondedList() {
+	double infiniteDis = Distance.INFINITE_DISTANCE;
+	int length = matrix.length;
+	nonBondedList.reset();
+	for (int iRow = 0; iRow <length; iRow++) {
+	    MatrixRow row = matrix[iRow];
+	    boolean doneRow = false;
+	    int rowLength = row.size();
+	    Distance[] distances = row.distances;
+	    for (int iDistance = 0; (! doneRow) && (iDistance < rowLength) ; iDistance++) {
+		Distance distance = distances[iDistance];
+		int atom2number = distance.atom2Number;
+		if (atom2number >= iRow) doneRow = true;
+		else 
+		    if ((! distance.bonded) && (distance.distance < infiniteDis))
+			nonBondedList.fastAdd(distance);
+	    }
+	}
+	//	nonBondedList.print();
+    }
+    public void testNonBondedList() {
+	System.out.println("No NonBondedList test");
+    }
+// 	Distance nonBonded;
+// 	Iterator nonBondedDistances = nonBondedList.iterator();
+// 	for (int i = 0 ; i < atomArray.length; i++) {
+// 	    System.out.println("testing row "+i+" of DistanceMatrix");
+// 	    for (int j = 0; j < i; j++) {
+// 		Distance distance = new Distance((Atom)atomArray[i], (Atom) atomArray[j]);
+// 		if ((! distance.bonded()) & (distance.distance() < rMax)) {
+// 		    nonBonded = (Distance) nonBondedDistances.next();
+// 		    if (nonBonded == null) 
+// 			throw new RuntimeException("Distance "+distance+" is missing from the non bonded list");
+// 		    if ((nonBonded.distance() != distance.distance()) |
+// 			(nonBonded.atom1() != distance.atom1()) |
+// 			(nonBonded.atom2() != distance.atom2())) {
+// // 			matrix[i].print();
+// // 			nonBondedList.print();
+// 			throw new RuntimeException("Distance "+distance+" \nis inconsistent with "+nonBonded);
+// 		    }
+// 		}
+// 	    }
+// 	}
+//    }
+		    
+    /*------------------------------------------ other methods --------------------------------------------*/ 
+    public MatrixRow rowNumber(int index) { return matrix[index];}
+    /**
+     * Returns the non-bonded-list.
+     **/	
+    public DistanceList nonBondedList() {
+	if (nonBondedList == null) 
+	    getNonBondedList();
+	return nonBondedList;
+    }
+    public DistanceList bondedList() {return bondedList;}
+    public DistanceList newHydrogenBondsList() {
+       return newHydrogenBondsList;
+    }
+
+
+    /** 
+     * Returns the Distance object of the parameters.
+     **/
+    public Distance distance(Atom atom1, Atom atom2) {
+	return distance(atom1.number(), atom2.number());
+    }
+
+    public Distance distance(AtomPair atomPair) { 
+	return distance(atomPair.largeNumber(), atomPair.smallNumber());
+    }
+
+    /** 
+     * Returns the Distance object of the parameters.
+     **/
+    public Distance distance(int atom1Number, int atom2Number) {
+	Distance out;	
+	out = matrix[atom1Number].binarySearch(atom2Number); 
+	if (out == null) return infiniteDistance;
+	return  out;	    
+    }
+
+    public Distance exclusiveDistance(int atom1Number, int atom2Number) {
+	return matrix[atom1Number].binarySearch(atom2Number); 
+    }
+
+    public double radius() { return atomList.radius();}
+
+    public String toString() {
+	return ("DistanceMatrix:\n"+
+		"\t number of atoms \t"+atomList.size()+
+		"\t rMax \t"+rMax+
+		"\t buffer\t"+buffer); 
+    }
+
+    public String upperLeft() {
+	int n = atomArray.length;
+	String out = "";
+	int atom1, atom2;
+	Distance distance;
+	if (n > 7) n = 7;
+	for (int i = 0; i < n; i++) {
+	    atom1 = ((Atom) atomArray[i]).number();
+	    for (int j = 0; j < i; j++) {
+		atom2 = ((Atom) atomArray[j]).number();
+		distance = matrix[atom1].binarySearch(atom2);             
+		if (distance != null) out += distance.distance()+"\t";
+		else out += "--\t";			
+	    }
+	    out += "\n";
+	}
+	return out;
+    }
+
+    public void test() {
+	int atom1, atom2;
+	int n = atomArray.length;
+	Distance distance;
+	for (int i = 0; i < n; i++) {
+	    atom1 = ((Atom) atomArray[i]).number();
+	    for (int j = 0; j < i ; j++) {
+		atom2 = ((Atom) atomArray[j]).number();
+		distance =  matrix[atom1].binarySearch(atom2);          
+		System.out.println("DM("+atom1+","+atom2+") "+distance);
+	    }
+	}
+	Iterator distances;
+	System.out.println("Bonded List:");
+	distances = bondedList.iterator();
+	while((distance = (Distance) distances.next()) != null)
+	    System.out.println((distance.atom1()+","+distance.atom2()));
+	System.out.println("Non-Bonded List:");
+	distances = nonBondedList.iterator();
+	while((distance = (Distance) distances.next()) != null)
+	    System.out.println(distance.atom1()+","+distance.atom2());
+    }
+    /**
+     * Returns the bonded list
+     **/
+    public int nonBondedListSize() {return nonBondedList.size();}
+
+    public static DistanceList getBondedList(Object[] atomArray, int depth, MatrixRow[] matrix ) {
+	AtomList bonded;
+	Atom atom, bondedAtom;
+	Iterator bondedAtoms;
+	DistanceList out;
+	int length = atomArray.length; 
+	AtomPairList tempList = new AtomPairList();
+	for (int iatom = 0; iatom < length; iatom++) {
+	    atom = (Atom) atomArray[iatom];
+	    bonded = getBonded(atom, depth);
+	    bondedAtoms = bonded.iterator();
+	    while ((bondedAtom = (Atom) bondedAtoms.next()) != null) 
+		tempList.fastAdd(new AtomPair(atom, bondedAtom));
+	}
+	tempList.sort();
+	// This instantiate the Distance objects associated with bonded atom pairs. 
+	// These pairs will be ignored during the non-bonded list update.	
+	AtomPair atomPair;	
+	Distance distance;
+	out = new DistanceList();
+	Iterator atomPairs = tempList.iterator();
+	while ((atomPair = (AtomPair) atomPairs.next()) != null) {
+	    if (atomPair.atom1Number() > atomPair.atom2Number())
+		distance = new Distance(atomPair.atom1(),atomPair.atom2());
+	    else 
+		distance = new Distance(atomPair.atom2(),atomPair.atom1());
+	    distance.setBonded();
+	    matrix[atomPair.largeNumber()].add(distance);                          
+	    matrix[atomPair.smallNumber()].add(new DistanceMirror(distance)); 
+	    out.add(distance);
+	}
+	return out;
+    }
+
+
+    public static AtomList getBonded(Atom atom, int depth) {
+	AtomList out = new AtomList();
+	getBonded(atom, depth, out,atom.number());
+	return out;
+    }
+    public static void  getBonded(Atom atom, int depth, AtomList out, int rootNumber) {        
+	if (depth == 0) return;
+	Iterator atoms = atom.bonded().iterator();	
+	Atom bondedAtom;
+	while ((bondedAtom = (Atom) atoms.next()) != null) {
+	    if ((rootNumber < bondedAtom.number()) &
+		(! out.contains(bondedAtom)))
+		out.fastAdd(bondedAtom);
+	    getBonded(bondedAtom, depth-1, out, rootNumber);
+	}
+	
+    }
+    public void doNotUpdateNonBondedList() {nonBondedFlag = false;}
+
+    public boolean inFrozenBondedList(Atom atom1, Atom atom2) {
+	Residue residue1, residue2;
+	if (! bondedList.sorted()) bondedList.sort(); 
+	residue1 = atom1.residue();
+	residue2 = atom2.residue();
+	Distance distance;
+	if (((residue1.type == CYS) && (residue2.type == CYS)) ||
+	    (Math.abs(residue1.number - residue2.number) <= 2)) {
+		    distance = new Distance(atom1,atom2);
+		    for(int i = 0; i < bondedList.size();i++)
+			    if (frozenBondedList.elementAt(i).equals(distance)) return true;
+	    }
+	    return false;
+    }
+
+    public static double rMax() {return rMax;}
+    public static double rMax2() {return rMax2;}
+    public static boolean setHO() {return setHO;}
+    public double buffer() {return buffer;}
+    public static double rMaxPlusBuffer2() {return rMaxPlusBuffer2;}
+    public AtomList atomList() {return atomList;}   
+    public Indicator indicatorToUpdateHB() {return indicatorToUpdateHB;}        
+    public long counterDis(){return counterDis;}
+    public long counterDisSqr(){return counterDisSqr;}
+
+    public class Indicator{
+	public Indicator(){};
+    }
+
+
+    private class RowIterator  implements Iterator {
+	int size;
+	int current;
+	
+	public RowIterator() {
+	    current = 0;
+	    size = matrix.length;
+	}
+	public void remove() {
+	    throw new RuntimeException("remove not implemented");
+	}
+	public Object next() {
+	    if (current >= size) return null;
+	    int temp = current;
+	    current++;
+	    return matrix[temp];
+	}
+	public boolean hasNext() {
+	    return (current < size);
+	}
+    }
+    public Iterator rowIterator() {return new RowIterator();}
+    private static class NonBondedFilter implements Filter {
+        public boolean accept(Object obj) {
+	    Distance distance = (Distance) obj;
+	    boolean out = (distance.distance2< rMax2) & (!distance.bonded());
+	    return out;
+	}
+    }
+
+    public DistanceList nonBondedListIncludingFrozens() {
+	Distance distance;
+	Atom iAtom, jAtom;
+	int size = atomArray.length;
+	if (frozenNonBonded == null) {
+	    frozenNonBonded = new DistanceList();
+	    for (int i = 0;i < size; i++) {
+		iAtom = (Atom) atomArray[i];
+		if (iAtom.frozen()) {
+		    for (int j = 0;j < i; j++) {
+			jAtom = (Atom) atomArray[j];
+			if (jAtom.frozen()) {
+			    distance = new Distance(iAtom,jAtom);
+			    if (distance.distance() < rMax){ 
+			         if (! inFrozenBondedList(iAtom,jAtom)){
+				   frozenNonBonded.add(distance);
+		   	        } 
+                            }
+			}
+		    }
+		}
+	    }
+	}
+	DistanceList out = new DistanceList();
+	Iterator distances = frozenNonBonded.iterator();
+	while ((distance = (Distance) distances.next()) != null)
+	    out.add(distance);
+	distances = nonBondedList.iterator();
+	while ((distance = (Distance) distances.next()) != null)
+	    out.add(distance);
+	return out;
+    }
+    
+}

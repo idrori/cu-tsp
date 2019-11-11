@@ -1,0 +1,101 @@
+package meshi.geometry;
+
+import  meshi.molecularElements.atoms.*;
+import java.util.*;
+
+public  class MatrixRowCaOnly extends MatrixRow {
+    MolecularSystem molecularSystem;
+    int index = -1;
+    public MatrixRowCaOnly(AtomCore atom, int capacity, MatrixRow[] matrix, MolecularSystem molecularSystem) {
+	super(atom, matrix);
+	this.molecularSystem = molecularSystem;
+    }
+	
+    public void update(DistanceList nonBondedList, ArrayList<DistanceList> energyTermsDistanceLists) {
+	double dx,dy,dz,d2;
+	boolean keep;
+	int lastEmpty;
+
+	boolean found;
+
+
+    for (int j = 0; j < size ; j++) {
+	    Distance distance = internalArray[j];
+	    if ((distance != null)  &&  (!distance.mode.bonded)) {
+		distance.dx = distance.atom1.x()-distance.atom2.x();
+		distance.dy = distance.atom1.y()-distance.atom2.y();
+		distance.dz = distance.atom1.z()-distance.atom2.z();
+		d2 = distance.dx*distance.dx+distance.dy*distance.dy+distance.dz*distance.dz;
+		if (d2 >= rMax2) internalArray[j] = null;
+	    }
+	}
+	for (int i = 0; i < molecularSystem.size(); i++) {
+	    AtomCore iAtom = molecularSystem.get(i);
+	    if (iAtom.number <atom.number) {
+		dx = atom.x() - iAtom.x();
+		dy = atom.y() - iAtom.y();
+		dz = atom.z() - iAtom.z();
+		d2 = dx*dx + dy*dy + dz*dz;
+		if (d2 > 25*rMax2) {
+		    //System.out.println(d2+" jump 5");
+		    i += 5;
+		}
+		else if (d2 > 16*rMax2) {
+		    //System.out.println(d2+" jump 3");
+		    i += 3;
+		}
+		else if (d2 > 9*rMax2) {
+		    //System.out.println(d2+" jump 2");
+		    i += 2;
+		}
+		else  if (d2 > 6*rMax2) {
+		    //System.out.println(d2+" jump 1");
+		    i++;
+		}
+		else if (d2 <= rMax2) {
+		    lastEmpty = -1;
+		    found = false;
+		    for (int j = 0; j < size; j++) {
+			distance = internalArray[j];
+			if (distance == null){
+			    lastEmpty = j; //i
+			}
+			else {
+			    atom2number = distance.atom2Number;
+			    if (iAtom.number == atom2number) {
+				found = true;   // Distance <atom, iAtom> is in the Matrix already
+				break;
+			    }
+			}
+		    }
+		    if (!found) {// needs to be inserted  - not necessary to check if !distance.mode.bonded, for bond found == true
+			if (atom.status().frozen() & iAtom.status().frozen()) 
+			    distance = new FrozenDistance(atom,iAtom, dx, dy, dz, Math.sqrt(d2));
+			else {
+                distance = new Distance(atom,iAtom, dx, dy, dz, Math.sqrt(d2));
+                distance.mode = DistanceMode.NEW;
+            }
+            //if ((! distance.mode.bonded) && (distance.distance < Distance.INFINITE_DISTANCE)){
+            if (distance.distance < Distance.INFINITE_DISTANCE){
+                nonBondedList.add(distance);
+			    for (DistanceList dl:energyTermsDistanceLists)
+				dl.add(distance);
+			    if (lastEmpty == -1)
+                    add(distance);
+			    else
+                    internalArray[lastEmpty] = distance;
+			}
+		    } 
+		}      
+	    }
+	}
+    }
+			    
+    public String toString() {
+	String out =  "MatrixRowCaOnly atom = "+atom+" number = "+number+"\n";
+	for (Distance dis:this)
+	    out+=" "+dis.toString()+" ; ";
+	return out;
+    }
+}
+

@@ -1,0 +1,164 @@
+package meshi.geometry;
+import  meshi.molecularElements.*;
+import  meshi.molecularElements.atoms.*;
+import  meshi.parameters.*;
+import java.util.*;
+import meshi.util.filters.*;
+import meshi.util.*;
+public  class MatrixRow extends DistanceList{
+    public final AtomCore atom;
+    public final int number;
+    int searchStart = 0;
+    MatrixRow[] matrix;
+    protected double rMax2;
+    double rMaxPlusBuffer2;
+    public static final int CAPACITY=10;
+    protected static int atom2number;
+    protected static int lastEmpty;
+    protected static Distance distance;
+    protected static AtomCore atom2;
+    private static double x1,y1,z1,d2;
+    private static DistanceMode mode;
+    private static boolean[] toNonBonded = new boolean[CAPACITY];
+    public MatrixRow(AtomCore atom, MatrixRow[] matrix) {
+	super(CAPACITY);
+	this.atom = atom;
+	number = atom.number;
+	this.matrix = matrix;
+	rMax2 = DistanceMatrix.rMax2;
+	rMaxPlusBuffer2 = DistanceMatrix.rMaxPlusBuffer2;
+    }
+	
+
+    public void update(DistanceList nonBondedList, ArrayList<DistanceList> energyTermsDistanceLists) {
+	x1 = atom.x();
+	y1 = atom.y();
+	z1 = atom.z();
+	if (toNonBonded.length < size) toNonBonded = new boolean[capacity];
+	for (int i = 0; i < size; i++) {
+	    toNonBonded[i] = false;
+	    distance = internalArray[i];
+	    if (distance != null) {
+		mode = distance.mode;
+		if (mode.mirror || mode.free) throw new RuntimeException("Distance mirrors and free distances have nothing to do here\n"+distance);
+		if (!mode.frozen) {
+		    atom2 = distance.atom2;
+		    distance.dx = x1-atom2.x();
+		    distance.dy = y1-atom2.y();
+		    distance.dz = z1-atom2.z();
+		    d2 = distance.dx*distance.dx+distance.dy*distance.dy+distance.dz*distance.dz;
+		    if ((d2 < rMax2) || (mode.bonded)) {
+			distance.distance = Math.sqrt(d2);
+			distance.invDistance = 1/distance.distance;
+			if (!mode.bonded) {
+			    toNonBonded[i] = true;
+			    //nonBondedList.add(distance);
+			    if (mode == DistanceMode.INFINITE) {
+				mode = distance.mode = DistanceMode.NEW; 
+				for (DistanceList dl:energyTermsDistanceLists)
+				    dl.add(distance);
+			    }
+			    else {
+				distance.mode = DistanceMode.NORMAL;
+			    } 
+
+			}
+		    }
+		    else if (d2 < rMaxPlusBuffer2) {
+			mode = distance.mode = DistanceMode.INFINITE;
+			distance.distance = Distance.INFINITE_DISTANCE;
+			distance.dx = distance.dy = distance.dz = 0;
+			distance.invDistance = 1;
+		    }
+		    else  {
+			internalArray[i] = null;
+			distance.mode = DistanceMode.DEAD; // just in case comebody is looking at this object
+		    }
+
+		}
+	    }
+	}
+
+	for (int i = 0; i < size; i++) 
+	    if (toNonBonded[i]) nonBondedList.add(internalArray[i]);
+    }
+
+    public Distance search(int atom2number) {
+	for (int i = 0; i < size; i++) {
+	    distance = internalArray[i];
+	    if ((distance != null) && 
+		(distance.atom2Number == atom2number)) return distance;
+	}
+	return null;
+    }
+      
+
+    
+      public String toString() {
+	   String out =  "MatrixRow atom = "+atom+" number = "+number+"\n";
+	   for (Distance dis:this) {
+	       if (dis != null) out+=" "+dis.toString()+" ; ";
+	       else  out+=" null ; ";
+	   }
+	   return out;
+    }
+	    
+    public void addCell(GridCell cell,DistanceList nonBondedList, ArrayList<DistanceList> energyTermsDistanceLists){
+	double x = atom.x();
+	double y = atom.y();
+	double z = atom.z();
+	double dx, dy, dz, d2, dis; 
+	int largeNumber = -1, smallNumber = -1;
+	Distance distance = null;
+	double rMaxPlusBuffer2 = DistanceMatrix.rMaxPlusBuffer2;
+	double rmax2 = rMax2;
+	boolean found;
+	for (AtomCore cellAtom:cell) {           
+	    int cellAtomNumber = cellAtom.number; 
+	    if (number > cellAtomNumber) {
+		dx = x-cellAtom.x();
+		dy = y-cellAtom.y();
+		dz = z-cellAtom.z();
+		d2 = dx*dx+dy*dy+dz*dz;             
+		if (d2 < rMaxPlusBuffer2) {	
+		    lastEmpty = -1;
+		    found = false;
+		    for (int i = 0; i < size; i++) {
+			distance = internalArray[i];
+			if (distance == null){
+			    lastEmpty = i;
+			}
+			else {
+			    atom2number = distance.atom2Number;
+			    if (cellAtomNumber == atom2number) {
+				found = true;
+				    break;
+			    }
+			}
+		    }
+		    if (!found) {// needs to be inserted
+			
+			if (d2 < rMax2) dis = Math.sqrt(d2);
+			else dis = Distance.INFINITE_DISTANCE;
+			
+			if ((atom.status() == AtomStatus.FROZEN)  & (cellAtom.status() == AtomStatus.FROZEN))
+			    distance = new FrozenDistance(atom,cellAtom,dx,dy,dz,dis);
+			else distance = new Distance(atom,cellAtom,dx,dy,dz,dis);
+			if (distance.distance < Distance.INFINITE_DISTANCE){
+			    distance.mode = DistanceMode.NEW;
+			    nonBondedList.add(distance);
+			    for (DistanceList dl:energyTermsDistanceLists)
+				dl.add(distance);
+			}
+			else {
+			    distance.mode = DistanceMode.INFINITE;
+			}
+			if (lastEmpty == -1) add(distance);
+			else internalArray[lastEmpty] = distance;
+		    }
+		}       
+	    }        
+	}
+    }
+}
+
