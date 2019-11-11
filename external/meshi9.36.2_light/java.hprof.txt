@@ -1,0 +1,179 @@
+JAVA PROFILE 1.0.1, created Sun Apr 03 22:39:46 2016
+
+Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+  - Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  - Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+
+  - Neither the name of Oracle nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Header for -agentlib:hprof (or -Xrunhprof) ASCII Output (JDK 5.0 JVMTI based)
+
+WARNING!  This file format is under development, and is subject to
+change without notice.
+
+This file contains the following types of records:
+
+THREAD START
+THREAD END      mark the lifetime of Java threads
+
+TRACE           represents a Java stack trace.  Each trace consists
+                of a series of stack frames.  Other records refer to
+                TRACEs to identify (1) where object allocations have
+                taken place, (2) the frames in which GC roots were
+                found, and (3) frequently executed methods.
+
+HEAP DUMP       is a complete snapshot of all live objects in the Java
+                heap.  Following distinctions are made:
+
+                ROOT    root set as determined by GC
+                CLS     classes 
+                OBJ     instances
+                ARR     arrays
+
+SITES           is a sorted list of allocation sites.  This identifies
+                the most heavily allocated object types, and the TRACE
+                at which those allocations occurred.
+
+CPU SAMPLES     is a statistical profile of program execution.  The VM
+                periodically samples all running threads, and assigns
+                a quantum to active TRACEs in those threads.  Entries
+                in this record are TRACEs ranked by the percentage of
+                total quanta they consumed; top-ranked TRACEs are
+                typically hot spots in the program.
+
+CPU TIME        is a profile of program execution obtained by measuring
+                the time spent in individual methods (excluding the time
+                spent in callees), as well as by counting the number of
+                times each method is called. Entries in this record are
+                TRACEs ranked by the percentage of total CPU time. The
+                "count" field indicates the number of times each TRACE 
+                is invoked.
+
+MONITOR TIME    is a profile of monitor contention obtained by measuring
+                the time spent by a thread waiting to enter a monitor.
+                Entries in this record are TRACEs ranked by the percentage
+                of total monitor contention time and a brief description
+                of the monitor.  The "count" field indicates the number of 
+                times the monitor was contended at that TRACE.
+
+MONITOR DUMP    is a complete snapshot of all the monitors and threads in 
+                the System.
+
+HEAP DUMP, SITES, CPU SAMPLES|TIME and MONITOR DUMP|TIME records are generated 
+at program exit.  They can also be obtained during program execution by typing 
+Ctrl-\ (on Solaris) or by typing Ctrl-Break (on Win32).
+
+--------
+
+THREAD START (obj=50000193, id = 200001, name="main", group="main")
+THREAD START (obj=50000193, id = 200004, name="Monitor Ctrl-Break", group="main")
+THREAD END (id = 200001)
+THREAD START (obj=50000193, id = 200005, name="DestroyJavaVM", group="main")
+THREAD END (id = 200005)
+TRACE 300041:
+	java.util.zip.ZipFile.open(ZipFile.java:Unknown line)
+	java.util.zip.ZipFile.<init>(ZipFile.java:220)
+	java.util.zip.ZipFile.<init>(ZipFile.java:150)
+	java.util.jar.JarFile.<init>(JarFile.java:166)
+	java.util.jar.JarFile.<init>(JarFile.java:103)
+TRACE 300127:
+	java.net.DualStackPlainSocketImpl.accept0(DualStackPlainSocketImpl.java:Unknown line)
+	java.net.DualStackPlainSocketImpl.socketAccept(DualStackPlainSocketImpl.java:131)
+	java.net.AbstractPlainSocketImpl.accept(AbstractPlainSocketImpl.java:404)
+	java.net.PlainSocketImpl.accept(PlainSocketImpl.java:199)
+	java.net.ServerSocket.implAccept(ServerSocket.java:545)
+TRACE 300100:
+	java.io.FileInputStream.open0(FileInputStream.java:Unknown line)
+	java.io.FileInputStream.open(FileInputStream.java:195)
+	java.io.FileInputStream.<init>(FileInputStream.java:138)
+	sun.misc.URLClassPath$FileLoader$1.getInputStream(URLClassPath.java:1251)
+	sun.misc.Resource.cachedInputStream(Resource.java:77)
+TRACE 300227:
+	java.io.FileInputStream.open0(FileInputStream.java:Unknown line)
+	java.io.FileInputStream.open(FileInputStream.java:195)
+	java.io.FileInputStream.<init>(FileInputStream.java:138)
+	java.io.FileInputStream.<init>(FileInputStream.java:93)
+	sun.net.www.protocol.file.FileURLConnection.connect(FileURLConnection.java:90)
+TRACE 300151:
+	java.util.Arrays.copyOf(Arrays.java:3236)
+	java.util.zip.ZipCoder.getBytes(ZipCoder.java:89)
+	java.util.zip.ZipFile.getEntry(ZipFile.java:311)
+	java.util.jar.JarFile.getEntry(JarFile.java:240)
+	java.util.jar.JarFile.getJarEntry(JarFile.java:223)
+TRACE 300095:
+	java.lang.ClassLoader$NativeLibrary.load(ClassLoader.java:Unknown line)
+	java.lang.ClassLoader.loadLibrary0(ClassLoader.java:1937)
+	java.lang.ClassLoader.loadLibrary(ClassLoader.java:1822)
+	java.lang.Runtime.load0(Runtime.java:809)
+	java.lang.System.load(System.java:1086)
+TRACE 300183:
+	com.sun.org.apache.xerces.internal.impl.XMLDocumentScannerImpl.<init>(XMLDocumentScannerImpl.java:226)
+	com.sun.org.apache.xerces.internal.impl.XMLNSDocumentScannerImpl.<init>(XMLNSDocumentScannerImpl.java:63)
+	com.sun.org.apache.xerces.internal.parsers.XML11Configuration.<init>(XML11Configuration.java:562)
+	com.sun.org.apache.xerces.internal.parsers.XIncludeAwareParserConfiguration.<init>(XIncludeAwareParserConfiguration.java:130)
+	com.sun.org.apache.xerces.internal.parsers.XIncludeAwareParserConfiguration.<init>(XIncludeAwareParserConfiguration.java:91)
+TRACE 300066:
+	java.lang.String.indexOf(String.java:1491)
+	sun.net.www.ParseUtil.decode(ParseUtil.java:175)
+	sun.misc.URLClassPath$JarLoader.<init>(URLClassPath.java:785)
+	sun.misc.URLClassPath$3.run(URLClassPath.java:530)
+	sun.misc.URLClassPath$3.run(URLClassPath.java:520)
+TRACE 300052:
+	sun.util.calendar.ZoneInfoFile.load(ZoneInfoFile.java:320)
+	sun.util.calendar.ZoneInfoFile.access$000(ZoneInfoFile.java:61)
+	sun.util.calendar.ZoneInfoFile$1.run(ZoneInfoFile.java:258)
+	java.security.AccessController.doPrivileged(AccessController.java:Unknown line)
+	sun.util.calendar.ZoneInfoFile.<clinit>(ZoneInfoFile.java:251)
+TRACE 300096:
+	com.intellij.rt.execution.application.AppMain.main(AppMain.java:85)
+TRACE 300101:
+	java.lang.ClassLoader$NativeLibrary.load(ClassLoader.java:Unknown line)
+	java.lang.ClassLoader.loadLibrary0(ClassLoader.java:1937)
+	java.lang.ClassLoader.loadLibrary(ClassLoader.java:1843)
+	java.lang.Runtime.loadLibrary0(Runtime.java:870)
+	java.lang.System.loadLibrary(System.java:1122)
+TRACE 300023:
+	java.io.WinNTFileSystem.getBooleanAttributes(WinNTFileSystem.java:Unknown line)
+	java.io.File.exists(File.java:819)
+	sun.misc.URLClassPath$JarLoader.<init>(URLClassPath.java:794)
+	sun.misc.URLClassPath$3.run(URLClassPath.java:530)
+	sun.misc.URLClassPath$3.run(URLClassPath.java:520)
+CPU SAMPLES BEGIN (total = 41) Sun Apr 03 22:39:46 2016
+rank   self  accum   count trace method
+   1 48.78% 48.78%      20 300041 java.util.zip.ZipFile.open
+   2 17.07% 65.85%       7 300127 java.net.DualStackPlainSocketImpl.accept0
+   3  9.76% 75.61%       4 300100 java.io.FileInputStream.open0
+   4  4.88% 80.49%       2 300227 java.io.FileInputStream.open0
+   5  2.44% 82.93%       1 300151 java.util.Arrays.copyOf
+   6  2.44% 85.37%       1 300095 java.lang.ClassLoader$NativeLibrary.load
+   7  2.44% 87.80%       1 300183 com.sun.org.apache.xerces.internal.impl.XMLDocumentScannerImpl.<init>
+   8  2.44% 90.24%       1 300066 java.lang.String.indexOf
+   9  2.44% 92.68%       1 300052 sun.util.calendar.ZoneInfoFile.load
+  10  2.44% 95.12%       1 300096 com.intellij.rt.execution.application.AppMain.main
+  11  2.44% 97.56%       1 300101 java.lang.ClassLoader$NativeLibrary.load
+  12  2.44% 100.00%       1 300023 java.io.WinNTFileSystem.getBooleanAttributes
+CPU SAMPLES END
