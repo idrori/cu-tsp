@@ -1,0 +1,47 @@
+1      GGGCGCGCAGGGCGGCGCAAGCGGGCACUGGCCUCCCGGGGGCUUGCGCGGGGAUCCACCCACCGCAGGGCCGGGCCGCGGACCGCGGGCCACGCCCCUGGGGUCCGGAAGGCGCGGGAGCGGACGCGGGGGUUCUGUGAACUUGGAACCUGGCGGUGCG
+160    AGGUUCUCGCCGGGGAUGCGGCGGCGGCAGCUGCUUCCUGGUUUGAAGCUCGCCGAGUGGGGGAGAGCGUGAGCCUUCGGAGGCGGGGGCAGGAGGAGAAGCAAGAGGAGGCGGGGGAAGAGACGCUUGGGGCUGGGGCUCACCGGACGGGUAGGUCCGG
+320    CUCUCCAGGGAGAGGAGCUGCCCGGCCCUGGAGAAGGGGCGAGUCCUGCGCGAGUCCCCGGGAGGCGCCGCGCGCUUGGAAGGGACGGUCGGGCUUCCCCGGCCCGCUGAGGGCUCGGCGGCGGGCUCCCCUCCUUUCCACCUCGGGAGGGAGGGAAGGA
+480    GGGGAGGGAAAAGUCCCACGGAGGAGGCAGAAUGGCCAGUCGAGGGGCGCUUAGGCGCUGCCUUUCCCCAGGGCUGCCUCGACUCCUGCACCUGUCCCGAGGGCUGGCCUGAGACGGGACUCCCGGUUCUCCCGCUGCGAAGCAGCGCGGCCCCCCGGGG
+640    CCGGGGCAGCGGCGCCGGCAUGUCGUCUGGCACCAUGAAGUUCAAUGGCUAUUUGAGGGUCCGCAUCGGUGAGGCAGUGGGGCUGCAGCCCACCCGCUGGUCCCUGCGCCACUCGCUCUUCAAGAAGGGCCACCAGCUGCUGGACCCCUAUCUGACGGUG
+800    AGCGUGGACCAGGUGCGCGUGGGCCAGACCAGCACCAAGCAGAAGACCAACAAACCCACGUACAACGAGGAGUUUUGCGCUAACGUCACCGACGGCGGCCACCUCGAGUUGGCCGUCUUCCACGAGACGCCCCUGGGCUACGACCACUUCGUGGCCAACU
+960    GCACCCUGCAGUUCCAGGAGCUGCUGCGCACGACCGGCGCCUCGGACACCUUCGAGGGUUGGGUGGAUCUCGAGCCAGAGGGGAAAGUAUUUGUGGUAAUAACCCUUACCGGGAGUUUCACUGAAGCUACUCUCCAGAGAGACCGGAUCUUCAAACAUUU
+1120   UACCAGGAAGCGCCAAAGGGCUAUGCGAAGGCGAGUCCACCAGAUCAAUGGACACAAGUUCAUGGCCACGUAUCUGAGGCAGCCCACCUACUGCUCUCACUGCAGGGAGUUUAUCUGGGGAGUGUUUGGGAAACAGGGUU
+
+1      .((((((((...((((((..((..((.((((((.((.(((((((.(((((((......)))(((.(((((.(((((((((...))).)))).)).))))).)))((....)).(((((((..(((.((((((((((((...(((((..(((.((...(((
+160    ((.(((..((((((((.(((((.......)))))))))))))..))).)))))...)).)))......((.(((((((((.((((((.(((((((.........((((.(((((((((((.....((((((((((((((((......(((((((.(((..
+320    ((((....)))).))).)))))))(((((......)))))))))))).....)).))))))).((((((((((.(((.((..((.((.((..(((((((((((((((((.........))))))))(((((((((((((.(((....)))..))))))))
+480    )))))((((....)))).))).)))))).)).)).))..)).))).))))...))))))..))))))))...))).))))..))))))).))))))))))))))).)))))))))))))))))))))))))))))(((...)))))))))))))).))))
+640    )))).)).)).))))))...)))..(((((..((((........))))...((((((((((((..((((((((((..(((.((((..((((((.(((((((((..(((((((.((.((....(((((((...((((...))))..)))).))))))))))
+800    .))))))))))...))).)))))).....)))).))).((((((..((....................))..)))))))))....))))))).((((((((........))))))))..(((((((((.(((((.((((.(((((((.((.(((..((((
+960    (((...)))))))))).))((....))......(((((.(((((((....))))))))))))))))...)))))))..)))))...)).)))))))......(((.....)))((((((...))))))..((((....)))).)))))))))))).....
+1120   ..)))))..)))))...(((((.(((....)))))))).........((((((....)))))).(((..((.(((.(((((..((.((....((((((......))))))......))))..))))).))).))..))).
+
+You can download the minimum free energy (MFE) structure in [Vienna Format| Ct Format]. You can get thermodynamic details on this structure by submitting to our RNAeval web server.
+
+Results for thermodynamic ensemble prediction
+
+The free energy of the thermodynamic ensemble is -641.63 kcal/mol.
+The frequency of the MFE structure in the ensemble is 0.00 %.
+The ensemble diversity is 330.96.
+You may look at the dot plot containing the base pair probabilities [EPS|PDF|IMAGE CONVERTER].
+
+The centroid secondary structure in dot-bracket notation with a minimum free energy of -494.10 kcal/mol is given below.
+[color by base-pairing probability | color by positional entropy | no coloring]
+
+1      GGGCGCGCAGGGCGGCGCAAGCGGGCACUGGCCUCCCGGGGGCUUGCGCGGGGAUCCACCCACCGCAGGGCCGGGCCGCGGACCGCGGGCCACGCCCCUGGGGUCCGGAAGGCGCGGGAGCGGACGCGGGGGUUCUGUGAACUUGGAACCUGGCGGUGCG
+160    AGGUUCUCGCCGGGGAUGCGGCGGCGGCAGCUGCUUCCUGGUUUGAAGCUCGCCGAGUGGGGGAGAGCGUGAGCCUUCGGAGGCGGGGGCAGGAGGAGAAGCAAGAGGAGGCGGGGGAAGAGACGCUUGGGGCUGGGGCUCACCGGACGGGUAGGUCCGG
+320    CUCUCCAGGGAGAGGAGCUGCCCGGCCCUGGAGAAGGGGCGAGUCCUGCGCGAGUCCCCGGGAGGCGCCGCGCGCUUGGAAGGGACGGUCGGGCUUCCCCGGCCCGCUGAGGGCUCGGCGGCGGGCUCCCCUCCUUUCCACCUCGGGAGGGAGGGAAGGA
+480    GGGGAGGGAAAAGUCCCACGGAGGAGGCAGAAUGGCCAGUCGAGGGGCGCUUAGGCGCUGCCUUUCCCCAGGGCUGCCUCGACUCCUGCACCUGUCCCGAGGGCUGGCCUGAGACGGGACUCCCGGUUCUCCCGCUGCGAAGCAGCGCGGCCCCCCGGGG
+640    CCGGGGCAGCGGCGCCGGCAUGUCGUCUGGCACCAUGAAGUUCAAUGGCUAUUUGAGGGUCCGCAUCGGUGAGGCAGUGGGGCUGCAGCCCACCCGCUGGUCCCUGCGCCACUCGCUCUUCAAGAAGGGCCACCAGCUGCUGGACCCCUAUCUGACGGUG
+800    AGCGUGGACCAGGUGCGCGUGGGCCAGACCAGCACCAAGCAGAAGACCAACAAACCCACGUACAACGAGGAGUUUUGCGCUAACGUCACCGACGGCGGCCACCUCGAGUUGGCCGUCUUCCACGAGACGCCCCUGGGCUACGACCACUUCGUGGCCAACU
+960    GCACCCUGCAGUUCCAGGAGCUGCUGCGCACGACCGGCGCCUCGGACACCUUCGAGGGUUGGGUGGAUCUCGAGCCAGAGGGGAAAGUAUUUGUGGUAAUAACCCUUACCGGGAGUUUCACUGAAGCUACUCUCCAGAGAGACCGGAUCUUCAAACAUUU
+1120   UACCAGGAAGCGCCAAAGGGCUAUGCGAAGGCGAGUCCACCAGAUCAAUGGACACAAGUUCAUGGCCACGUAUCUGAGGCAGCCCACCUACUGCUCUCACUGCAGGGAGUUUAUCUGGGGAGUGUUUGGGAAACAGGGUU
+
+1      ..............................((......(((((..(((((((......)))(((.(((((.(((((((((...)))).))).)).))))).))).(....)..(((((((..(((.((((((((((((...(((....(((.((...(((
+160    ((.(((..((((((((.(((((.......)))))))))))))..))).)))))...)).)))......((.(((((((((.((((((.(((((((.........((((.(((.(((((...........((((((((((((.((((((......))))))
+320    (((((....)))))))))..))))))))................................((.((((((((((.(((.((..((.((.((..(((((((((((((((((.........))))))))(((((((((((((.............))))))))
+480    )))))((((....)))).))).)))))).)).)).))..)).))).))))...)))))).))..)))))...))).))))..))))))).))))))))))))))).))..)))))))))))))))))))))))))(((...))))))).))))).....)
+640    ).........((.(((............))).))............((((.(((((((..((((.((((((((((......((((..((((((.(((((((((..(((((((.((....((.(((((((...((((...))))..)))).))))))))))
+800    .))))))))))...))).)))))).....)))).....((((((..............((.....)).....)))))))))....)))))))..))))...)))))))..))))(((((....))))).......((((((((.....))))))))((((
+960    (((...))))))).....................................................................................................(((((.(.....(.((((((((((..(((.((..((((........
+1120   ......))))..))...(((((.(((....)))))))).........((((((....))))))..((..(((..((((((((........)))).)))).)))..)).)))..)))))))))))....))))))......

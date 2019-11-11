@@ -1,0 +1,44 @@
+ubuntu5:/users/faculty/cs/keasar/mail->grep T0 psipred
+         ID:d8ba2480-4ae9-11e2-8ba8-00163e110593/T0531-D1.pdb.fasta
+         ID:71cb7706-4ae9-11e2-8ba8-00163e110593/T0521-D2.pdb.fasta
+         ID:3e47425c-4ae9-11e2-8ba8-00163e110593/T0515-D1.pdb.fasta
+         ID:0d3ff00a-4ae9-11e2-8ba8-00163e110593/T0515-D1.pdb.fasta
+         ID:6129bfe8-4ae9-11e2-8ba8-00163e110593/T0520-D1.pdb.fasta
+         ID:a04cddc2-4ae9-11e2-8ba8-00163e110593/T0527-D1.pdb.fasta
+         ID:983c0b58-4ae9-11e2-8ba8-00163e110593/T0526-D1.pdb.fasta
+         ID:911f3d90-4ae9-11e2-8ba8-00163e110593/T0525-D1.pdb.fasta
+         ID:58c7d182-4ae9-11e2-8ba8-00163e110593/T0518-D1.pdb.fasta
+         ID:81be868a-4ae9-11e2-8ba8-00163e110593/T0523-D1.pdb.fasta
+         ID:4faba088-4ae9-11e2-8ba8-00163e110593/T0517-D1.pdb.fasta
+         ID:46c3d5c6-4ae9-11e2-8ba8-00163e110593/T0516-D1.pdb.fasta
+         ID:79adb6dc-4ae9-11e2-8ba8-00163e110593/T0522-D1.pdb.fasta
+         ID:f316b9ec-4ae9-11e2-8ba8-00163e110593/T0533-D2.pdb.fasta
+         ID:d049a884-4ae9-11e2-8ba8-00163e110593/T0530-D1.pdb.fasta
+         ID:894daad4-4ae9-11e2-8ba8-00163e110593/T0524-D1.pdb.fasta
+         ID:696bee1a-4ae9-11e2-8ba8-00163e110593/T0521-D1.pdb.fasta
+         ID:bc98c310-4ae9-11e2-8ba8-00163e110593/T0529-D1.pdb.fasta
+         ID:a9f79bb4-4ae9-11e2-8ba8-00163e110593/T0528-D1.pdb.fasta
+         ID:eaa15dc6-4ae9-11e2-8ba8-00163e110593/T0533-D1.pdb.fasta
+         ID:e1c9e2cc-4ae9-11e2-8ba8-00163e110593/T0532-D1.pdb.fasta
+ubuntu5:/users/faculty/cs/keasar/mail->grep http psipred
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/d8ba2480-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/71cb7706-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/3e47425c-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/0d3ff00a-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/6129bfe8-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/a04cddc2-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/983c0b58-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/911f3d90-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/58c7d182-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/81be868a-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/4faba088-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/46c3d5c6-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/79adb6dc-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/f316b9ec-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/d049a884-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/894daad4-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/696bee1a-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/bc98c310-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/a9f79bb4-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/eaa15dc6-4ae9-11e2-8ba8-00163e110593
+http://bioinf.cs.ucl.ac.uk/psipredtest/result/e1c9e2cc-4ae9-11e2-8ba8-00163e110593
