@@ -1,0 +1,6 @@
+@article{drori2019accuratepsp,
+  title = {Accurate Protein Structure Prediction by Embeddings and Deep Learning Representations},
+  author = {Drori, Iddo and Thaker, Darshan and Srivatsa, Arjun and Jeong, Daniel and Wang, Yueqi and Nan, Linyong and Wu, Fan and Leggas, Dimitri and Lei, Jinhao and Lu, Weiyi and Fu, Weilong and Gau, Yuan and Karri, Sashank and Kannan, Anand and Moretti, Antonio and AlQuraishi, Mohammed and Keasar, Chen and Pe'er, Itsik},
+  journal = {Machine Learning in Computational Biology},
+  year = {2019}
+}
